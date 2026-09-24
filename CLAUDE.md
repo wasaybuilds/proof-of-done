@@ -12,13 +12,15 @@ Proof of Done is a CLI that independently verifies a coding agent's "done / test
 - `web-tree-sitter` (WASM) for parsing, `commander` CLI, `zod` config, `execa` for git, `@noble/ed25519` signing
 - `vitest` for tests
 
-## Commands (once Phase 1 lands)
+## Commands
 ```bash
 npm install
-npm run build
-npm test            # unit + fixture tests
 npm run lint
+npm run typecheck
+npm test            # unit + fixture tests
+npm run build       # → dist/
 ```
+CI (`.github/workflows/ci.yml`) runs all four on Node 20 and 22 for every PR. All must pass before merging to `main`.
 
 ## Layout
 ```

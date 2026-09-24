@@ -13,7 +13,14 @@ We only use cases with permission and always credit the reporter.
 See [docs/DETECTION-RULES.md → Adding a rule](docs/DETECTION-RULES.md#adding-a-rule). Every rule needs at least one positive and one negative fixture.
 
 ## Development
-Code setup instructions will be added in Phase 1. Planned: Node ≥ 20, `npm install`, `npm test`.
+Requires Node ≥ 20.
+
+```bash
+npm install
+npm run lint && npm run typecheck && npm test && npm run build
+```
+
+`main` is protected: open a pull request; CI must pass before merge.
 
 ## Principles
 - Deterministic first; the LLM judge is optional and opt-in.
