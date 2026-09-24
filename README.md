@@ -1,5 +1,9 @@
 # Proof of Done
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange)
+![Node >= 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
+
 **Your coding agent says "done, all tests pass." Proof of Done checks whether that's true.**
 
 Coding agents (Claude Code, Cursor, Codex, Devin, …) regularly report success when the work isn't finished. Sometimes the tests really fail. Sometimes the tests "pass" because the agent deleted the failing one, added `.skip`, removed an assertion, or hardcoded the expected value.
@@ -51,8 +55,6 @@ receipt: .proof-of-done/receipts/2026-09-24T10-12-03Z.json (signed)
 | [Integrations](docs/INTEGRATIONS.md) | Claude Code, Cursor, git hooks, GitHub Actions |
 | [Configuration](docs/CONFIGURATION.md) | `.proofofdone.yml` reference |
 | [Roadmap](docs/ROADMAP.md) | Phases, milestones, success criteria |
-| [Research](research/MARKET-RESEARCH.md) | Market gap analysis, competitors, sources |
-| [Case studies](docs/case-studies/README.md) | Real incidents of agents faking "done" |
 
 ## Contributing
 

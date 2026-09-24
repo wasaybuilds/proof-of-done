@@ -175,5 +175,5 @@ proof-of-done/
 - The re-runner executes the project's own test command — same trust level as running tests yourself. In CI it runs in the CI sandbox.
 
 ## 9. Future: hosted layer and agent-to-agent escrow
-- **Team dashboard** (paid): receipt history, per-agent cheat rates, org-wide policies.
+- **Team dashboard**: receipt history, per-agent cheat rates, org-wide policies.
 - **Verification API**: an agent marketplace or escrow contract submits `{repo, base, head, acceptance criteria}` and releases payment only on a valid `PASS` receipt. The receipt format is designed for this from day one (content hashes + signature + verifier identity).
