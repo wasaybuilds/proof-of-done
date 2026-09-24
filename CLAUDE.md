@@ -5,11 +5,11 @@ Guidance for Claude Code (and other coding agents) working in this repository.
 ## Project
 Proof of Done is a CLI that independently verifies a coding agent's "done / tests pass" claim: it re-runs tests in an isolated worktree, detects test tampering by diffing before vs. after, checks scope, and emits a signed receipt. Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before making structural changes.
 
-**Status:** pre-alpha. Docs exist; implementation starts in Phase 1 ([docs/ROADMAP.md](docs/ROADMAP.md)).
+**Status:** pre-alpha, Phase 1 in progress ([docs/ROADMAP.md](docs/ROADMAP.md)). Implemented: git ChangeSet, tree-sitter test extraction (JS/TS/TSX, Python), rules POD001–POD003, `verify` CLI.
 
 ## Stack
 - TypeScript (strict), Node ≥ 20, ESM
-- `web-tree-sitter` (WASM) for parsing, `commander` CLI, `zod` config, `execa` for git, `@noble/ed25519` signing
+- `@vscode/tree-sitter-wasm` (WASM runtime + grammars) for parsing, `commander` CLI, `zod` config, `node:child_process` for git, `@noble/ed25519` signing
 - `vitest` for tests
 
 ## Commands
@@ -24,12 +24,15 @@ CI (`.github/workflows/ci.yml`) runs all four on Node 20 and 22 for every PR. Al
 
 ## Layout
 ```
-src/cli  src/changeset  src/policy  src/parse/<lang>  src/rules
-src/scope  src/runner  src/judge  src/verdict  src/receipt  src/feedback  src/adapters
-fixtures/<RULE-ID>/<case>/{before,after}/   # real before/after pairs
+src/engine.ts      # analyze → run rules → verdict (no git, no I/O)
+src/cli  src/changeset  src/parse/<lang>  src/rules  src/feedback
+# planned: src/policy  src/scope  src/runner  src/judge  src/receipt  src/adapters
+fixtures/<RULE-ID|negative>/<case>/{before,after}/  expected.json  README.md
 test/
 docs/
 ```
+
+**Fixtures:** each case is a before/after file tree plus `expected.json` (`{ verdict, rules }`). Positive cases link the real incident they reproduce in `README.md`. `test/fixtures.test.ts` runs every fixture automatically. Fixture `*.test.*` files are data — vitest only runs `test/**`.
 
 ## Non-negotiable rules
 1. **Deterministic by default.** No LLM calls on the default path. The judge in `src/judge` is opt-in and receives only relevant hunks.

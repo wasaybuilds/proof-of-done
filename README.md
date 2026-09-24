@@ -15,7 +15,7 @@ Proof of Done is an independent verifier that runs **outside the agent's control
 3. **Checks scope** — did the agent touch files it wasn't supposed to (CI config, test config, protected paths)?
 4. **Issues a signed receipt** — `PASS`, `SUSPICIOUS`, or `FAIL` — and, on failure, hands the agent a short (~50 token) instruction to fix the real problem.
 
-> Status: **pre-alpha / design phase.** Nothing is implemented yet. See [docs/ROADMAP.md](docs/ROADMAP.md).
+> Status: **pre-alpha.** `verify` detects deleted tests, skipped tests and removed assertions (JS/TS + Python). Test re-runs, receipts and agent hooks are in progress — see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Why it's cheap
 
@@ -24,8 +24,9 @@ Proof of Done is an independent verifier that runs **outside the agent's control
 ## How it will be used
 
 ```bash
-# one-off check against the branch point
-npx proof-of-done verify --base main
+# one-off check
+npx proof-of-done verify              # uncommitted changes vs HEAD
+npx proof-of-done verify --base main  # everything on this branch
 
 # as a Claude Code Stop hook: agent can't finish until verification passes
 npx proof-of-done install claude-code
