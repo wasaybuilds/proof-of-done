@@ -61,7 +61,7 @@ So Proof of Done must:
 - Merges with built-in defaults. Schema validated with `zod`.
 
 ### 4.3 Static Rules Engine
-- Parses before/after versions of changed test and source files with **tree-sitter** (`web-tree-sitter` WASM — no native build, works on Windows/macOS/Linux).
+- Parses before/after versions of changed test and source files with **tree-sitter** (`@vscode/tree-sitter-wasm`: runtime + JS/TS/TSX/Python grammars as WASM — no native build, works on Windows/macOS/Linux).
 - Language packs: JS/TS (Jest, Vitest, Mocha) and Python (pytest, unittest) in v0.1; Go, Rust, Java later.
 - Each rule is a pure function:
   ```ts
@@ -149,10 +149,10 @@ proof-of-done/
 | Concern | Choice | Why |
 |---|---|---|
 | Language | TypeScript, Node ≥ 20 | Same ecosystem as most agent tooling; `npx` distribution |
-| Parsing | `web-tree-sitter` (WASM) | Multi-language, no native compile, cross-platform |
+| Parsing | `@vscode/tree-sitter-wasm` (WASM) | Multi-language, no native compile, cross-platform |
 | CLI | `commander` | Small, standard |
 | Config | YAML + `zod` | Human-editable, validated |
-| Git | `git` CLI via `execa` | Fewer native deps than libgit2 |
+| Git | `git` CLI via `node:child_process` | Fewer native deps than libgit2 |
 | Test results | JUnit XML | Supported by Jest, Vitest, pytest, Go, Java… |
 | Signing | `@noble/ed25519` | Audited, pure JS |
 | Own tests | `vitest` | Fast; fixture-driven rule tests |

@@ -1,24 +1,31 @@
 # Roadmap
 
-## Phase 0 — Rule corpus
-- [ ] Collect real, sourced before/after examples of agents faking "done".
-- [ ] Turn the clearest cases into `fixtures/` (positive + negative pairs).
+Rule priority follows evidence: see the Evidence column in [DETECTION-RULES.md](DETECTION-RULES.md).
 
-**Exit criteria:** cheat types map to ≤ 10 rules covering ≥ 80% of collected cases.
+## Phase 0 — Rule corpus ✅
+- [x] Collect real, sourced incidents of agents faking "done" — 72 cases.
+- [x] Map them to rules; add rules for uncovered patterns (POD014–POD017).
+- [x] First fixtures (positive + negative) derived from real cases.
 
-## Phase 1 — CLI v0.1, static-only
-- [ ] ChangeSet builder, policy loader, tree-sitter JS/TS + Python
-- [ ] Rules POD001–006, POD008, POD009
-- [ ] Human report + agent feedback formatter
+## Phase 1 — CLI v0.1
+- [x] ChangeSet from git (committed, staged, unstaged, untracked; renames)
+- [x] tree-sitter parsing for JS/TS/TSX + Python; test extraction (suites, skip/only, assertion counts)
+- [x] POD001 test-deleted, POD002 test-skipped, POD003 assertion-removed
+- [x] `verify` command: human report, `--json`, exit codes, capped agent feedback
+- [ ] POD004 assertion-weakened, POD005 vacuous-assertion
+- [ ] POD008 protected-path-modified, POD009 test-config-weakened, POD014 test-reporting-hooked, POD015 early-exit
+- [ ] Minimal test re-runner (JUnit XML) + POD013 claim-mismatch — most common pattern, pulled forward from Phase 2
+- [ ] Policy file `.proofofdone.yml` read from base
 - [ ] Claude Code Stop hook + git pre-push adapter
 - [ ] Unsigned JSON receipt
 - [ ] Publish to npm
 
-**Exit criteria:** < 5% false positives on negative fixtures; < 2 s on a 500-line diff.
+**Exit criteria:** 0 false positives on negative fixtures; < 2 s on a 500-line diff.
 
 ## Phase 2 — Full verification
-- [ ] Isolated worktree test re-runner, JUnit parsing
-- [ ] POD010 original-tests-fail, POD013 claim-mismatch, POD011 scope, POD007 hardcoded values
+- [ ] Isolated worktree re-runner; POD010 original-tests-fail
+- [ ] POD007 hardcoded-expected-value (second most common pattern), POD016, POD017, POD012
+- [ ] POD011 scope
 - [ ] Signed receipts + `receipt verify`
 - [ ] GitHub Action
 

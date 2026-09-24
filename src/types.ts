@@ -11,6 +11,29 @@ export interface FileChange {
   after?: string;
 }
 
+export type Lang = "typescript" | "tsx" | "javascript" | "python";
+
+/** A single test case extracted from a test file. */
+export interface TestCase {
+  /** Suite path + test name, e.g. "auth > rejects expired token". */
+  name: string;
+  /** 1-based line of the test declaration. */
+  line: number;
+  skipped: boolean;
+  /** `.only` / `fit` — silently skips sibling tests. */
+  focused: boolean;
+  assertions: number;
+  /** Whitespace-normalised body, used to match renamed or moved tests. */
+  body: string;
+}
+
+export interface AnalyzedFile {
+  change: FileChange;
+  lang?: Lang;
+  beforeTests?: TestCase[];
+  afterTests?: TestCase[];
+}
+
 export type Severity = "block" | "warn";
 
 export interface Finding {
@@ -25,7 +48,7 @@ export interface Finding {
 }
 
 export interface RuleContext {
-  change: FileChange;
+  files: AnalyzedFile[];
 }
 
 export interface Rule {
@@ -36,3 +59,9 @@ export interface Rule {
 }
 
 export type Verdict = "PASS" | "SUSPICIOUS" | "FAIL";
+
+export interface VerifyResult {
+  verdict: Verdict;
+  findings: Finding[];
+  filesChecked: number;
+}
