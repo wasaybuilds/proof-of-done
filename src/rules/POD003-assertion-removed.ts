@@ -1,10 +1,13 @@
 import type { Finding, Rule } from "../types.js";
+import { balancedSeverity, REFACTOR_NOTE, testBalance } from "./balance.js";
 
 export const assertionRemoved: Rule = {
   id: "POD003",
   name: "assertion-removed",
   severity: "block",
   check(ctx) {
+    const severity = balancedSeverity(testBalance(ctx));
+    const note = severity === "warn" ? ` — ${REFACTOR_NOTE}` : "";
     const findings: Finding[] = [];
 
     for (const file of ctx.files) {
@@ -19,11 +22,14 @@ export const assertionRemoved: Rule = {
         const removed = prev.assertions - t.assertions;
         findings.push({
           ruleId: this.id,
-          severity: this.severity,
+          severity,
           file: path,
           line: t.line,
-          message: `${removed} assertion${removed === 1 ? "" : "s"} removed from "${t.name}" (${prev.assertions} → ${t.assertions})`,
-          agentHint: `You removed ${removed} assertion(s) from "${t.name}" in ${path}. Restore them and fix the code instead.`,
+          message: `${removed} assertion${removed === 1 ? "" : "s"} removed from "${t.name}" (${prev.assertions} → ${t.assertions})${note}`,
+          agentHint:
+            severity === "warn"
+              ? `You removed ${removed} assertion(s) from "${t.name}" in ${path}. If they moved to new tests, fine; otherwise restore them.`
+              : `You removed ${removed} assertion(s) from "${t.name}" in ${path}. Restore them and fix the code instead.`,
         });
       }
     }

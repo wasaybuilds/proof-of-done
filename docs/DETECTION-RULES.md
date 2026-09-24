@@ -28,8 +28,17 @@ Severity: **block** = verdict `FAIL`; **warn** = verdict `SUSPICIOUS`.
 
 ---
 
+### Refactor vs. cheat (applies to POD001 and POD003)
+Humans delete and shrink tests all the time when refactoring: splitting a file, splitting a long test, replacing tests with a parametrized one. To avoid blocking that work:
+- A missing test whose **name or body reappears** anywhere in the change counts as moved or renamed, and is not reported.
+- Otherwise the rule compares **test strength across the whole change**. If the change adds at least as many assertions (in new tests or in existing ones) as it removes, findings are `warn` ("may be a refactor"). If strength drops overall, they are `block`.
+
+Validated on real history: on the last 100 commits of [pallets/click](https://github.com/pallets/click), this turned 5 blocking false positives (file split, moved tests, parametrized replacement, split test) into 0 blocks and 2 warnings.
+
+Known gap: an agent could delete a real test and add many trivial assertions elsewhere to stay at `warn`. POD005 (vacuous assertions) and POD004 (weakened assertions) are meant to close that.
+
 ### POD001 — test-deleted
-A test case or whole test file existing at `base` is missing at `head` (and not matched as a rename).
+A test case or whole test file existing at `base` is missing at `head` (and not matched as a rename or move).
 
 ```diff
 - it("rejects expired token", () => {
