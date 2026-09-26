@@ -38,6 +38,16 @@ POD003  block  src/math.test.ts:2  1 assertion removed from "adds" (2 → 1)
 
 Exit codes: `0` PASS or SUSPICIOUS, `1` FAIL, `2` could not read git changes.
 
+### In Claude Code
+
+`proof-of-done install claude-code` adds a Stop hook: when Claude tries to finish, Proof of Done checks everything changed since the session started. If a test was deleted, skipped or had assertions removed, Claude is sent back to fix it, with the exact instruction:
+
+```json
+{"decision":"block","reason":"Proof of Done: You deleted test \"subtracts\" in tests/math.test.ts. Restore it and fix the code under test instead."}
+```
+
+It stops blocking after 3 attempts, never blocks on a mere warning, and lets Claude stop if anything goes wrong. Details: [Integrations](docs/INTEGRATIONS.md#claude-code-available).
+
 ## Quick start (from source)
 
 Not on npm yet. Requires Node ≥ 20 and git.
@@ -51,13 +61,14 @@ npm ci && npm run build
 node /path/to/proof-of-done/dist/cli/index.js verify               # uncommitted changes vs HEAD
 node /path/to/proof-of-done/dist/cli/index.js verify --base main   # everything on this branch
 node /path/to/proof-of-done/dist/cli/index.js verify --json        # machine-readable
+node /path/to/proof-of-done/dist/cli/index.js install claude-code  # add the Claude Code hooks
 ```
 
 ## Where it's going
 
 - **Re-run the tests** in a clean, isolated checkout and compare with what the agent claimed
 - **More rules**, prioritised by real incidents: weakened and vacuous assertions, hardcoded answers, CI and test-config edits, early exits, test-result hooks ([full list](docs/DETECTION-RULES.md))
-- **Agent hooks**: a Claude Code Stop hook so the agent can't finish until verification passes; git and GitHub Action adapters
+- **More adapters**: git pre-push, GitHub Action, Cursor and Codex
 - **Signed receipts** that other tools (CI, reviewers, agent marketplaces) can trust
 - **`npx proof-of-done`** via npm
 
@@ -70,7 +81,7 @@ Progress: [docs/ROADMAP.md](docs/ROADMAP.md).
 | [Architecture](docs/ARCHITECTURE.md) | Components, data flow, tech stack, design decisions |
 | [Detection rules](docs/DETECTION-RULES.md) | Every cheat pattern, with examples and evidence |
 | [Receipt spec](docs/RECEIPT-SPEC.md) | The planned signed receipt format |
-| [Integrations](docs/INTEGRATIONS.md) | Planned Claude Code, git and GitHub Actions adapters |
+| [Integrations](docs/INTEGRATIONS.md) | Claude Code hooks (available); planned git and GitHub Actions adapters |
 | [Configuration](docs/CONFIGURATION.md) | Planned `.proofofdone.yml` reference |
 | [Roadmap](docs/ROADMAP.md) | Phases, milestones, success criteria |
 
