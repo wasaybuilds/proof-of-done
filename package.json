@@ -34,25 +34,27 @@
     "dist",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "prebuild": "npm run clean",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-grammars.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test:package": "npm run build && node scripts/smoke-test.mjs"
   },
   "dependencies": {
-    "@vscode/tree-sitter-wasm": "^0.3.1",
     "commander": "^15.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.2",
+    "@vscode/tree-sitter-wasm": "^0.3.1",
     "eslint": "^10.11.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.1",

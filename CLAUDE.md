@@ -9,7 +9,7 @@ Proof of Done is a CLI that independently verifies a coding agent's "done / test
 
 ## Stack
 - TypeScript (strict), Node ≥ 20, ESM
-- `@vscode/tree-sitter-wasm` (WASM runtime + grammars) for parsing, `commander` CLI, `zod` config, `node:child_process` for git, `@noble/ed25519` signing
+- tree-sitter for parsing: `@vscode/tree-sitter-wasm` is a **dev** dependency; the build ships only the runtime + TS/TSX/JS/Python grammars in `dist/wasm/` (keep install < 8 MB), `commander` CLI, `zod` config, `node:child_process` for git, `@noble/ed25519` signing
 - `vitest` for tests
 
 ## Commands
@@ -18,7 +18,8 @@ npm install
 npm run lint
 npm run typecheck
 npm test            # unit + fixture tests
-npm run build       # → dist/
+npm run build       # → dist/ (tsc + copies the 4 tree-sitter grammars into dist/wasm)
+npm run test:package  # pack, install into a clean project, run it (also in CI and release)
 ```
 CI (`.github/workflows/ci.yml`) runs all four on Node 20 and 22 for every PR. All must pass before merging to `main`.
 

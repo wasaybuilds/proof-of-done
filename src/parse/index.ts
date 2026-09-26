@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import TreeSitter from "@vscode/tree-sitter-wasm";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Language, Node } from "@vscode/tree-sitter-wasm";
 import type { Lang, TestCase } from "../types.js";
 import { extractJsTests } from "./javascript.js";
@@ -15,9 +16,20 @@ const GRAMMARS: Record<Lang, string> = {
   python: "tree-sitter-python.wasm",
 };
 
+// The published package ships only the grammars we use in dist/wasm/ (see scripts/copy-grammars.mjs).
+// When running from source, fall back to the full @vscode/tree-sitter-wasm dev dependency.
+const VENDORED = join(dirname(fileURLToPath(import.meta.url)), "..", "wasm");
+
 function wasmPath(file: string): string {
-  return require.resolve(`@vscode/tree-sitter-wasm/wasm/${file}`);
+  const vendored = join(VENDORED, file);
+  return existsSync(vendored) ? vendored : require.resolve(`@vscode/tree-sitter-wasm/wasm/${file}`);
 }
+
+// Vendored as .cjs because this package is "type": "module" and the runtime is a CommonJS/UMD script.
+const RUNTIME = existsSync(join(VENDORED, "tree-sitter.cjs"))
+  ? join(VENDORED, "tree-sitter.cjs")
+  : require.resolve("@vscode/tree-sitter-wasm/wasm/tree-sitter.js");
+const TreeSitter = require(RUNTIME) as typeof import("@vscode/tree-sitter-wasm");
 
 let init: Promise<void> | undefined;
 const languages = new Map<Lang, Promise<Language>>();
