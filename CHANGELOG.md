@@ -4,6 +4,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Changed
+- Releases are published with npm trusted publishing (OIDC) instead of a stored token. Provenance is attached automatically.
+
 ## [0.1.0] - 2026-09-26
 
 First release.
