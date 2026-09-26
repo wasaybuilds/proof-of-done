@@ -23,8 +23,23 @@ export interface TestCase {
   /** `.only` / `fit` — silently skips sibling tests. */
   focused: boolean;
   assertions: number;
+  /** Assertions by strength. exact + weak + vacuous === assertions. */
+  strength: AssertionStrength;
+  /** 1-based lines of assertions that cannot fail. */
+  vacuousLines: number[];
   /** Whitespace-normalised body, used to match renamed or moved tests. */
   body: string;
+}
+
+/**
+ * exact:   checks a specific value, error or call (`toBe(3)`, `assert x == 3`, `assertEqual`)
+ * weak:    only checks existence, truthiness or a bound (`toBeDefined()`, `assert x`, `> 0`, `toThrow()`)
+ * vacuous: cannot fail (`expect(true).toBe(true)`, `assert True`, `x == x`, swallowed by try/except)
+ */
+export interface AssertionStrength {
+  exact: number;
+  weak: number;
+  vacuous: number;
 }
 
 export interface AnalyzedFile {

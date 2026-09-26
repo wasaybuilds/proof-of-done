@@ -21,6 +21,8 @@ Proof of Done looks at **what changed**, not at what the agent reported.
 | **POD001** test-deleted | Tests or whole test files removed | JS / TS / TSX, Python |
 | **POD002** test-skipped | `.skip`, `xit`, `todo`, `@pytest.mark.skip`, `pytest.skip()`, newly added `.only` | JS / TS / TSX, Python |
 | **POD003** assertion-removed | Fewer assertions in a test than before, including commented-out asserts | JS / TS / TSX, Python |
+| **POD004** assertion-weakened | A specific check replaced by a weaker one: `toBe(120)` → `toBeDefined()`, `assertEqual` → `assertTrue`, `== 3` → `> 0` (warning) | JS / TS / TSX, Python |
+| **POD005** vacuous-assertion | Assertions that can't fail: `expect(true).toBe(true)`, `assert True`, `x == x`, asserts swallowed by `try/catch` | JS / TS / TSX, Python |
 
 It's built not to punish normal refactoring: renamed and moved tests are recognised, and when a change adds at least as many assertions as it removes, findings are warnings rather than failures. See [how refactors are handled](docs/DETECTION-RULES.md#refactor-vs-cheat-applies-to-pod001-and-pod003).
 
@@ -41,7 +43,7 @@ Exit codes: `0` PASS or SUSPICIOUS, `1` FAIL, `2` could not read git changes.
 
 ### In Claude Code
 
-`proof-of-done install claude-code` adds a Stop hook: when Claude tries to finish, Proof of Done checks everything changed since the session started. If a test was deleted, skipped or had assertions removed, Claude is sent back to fix it, with the exact instruction:
+`proof-of-done install claude-code` adds a Stop hook: when Claude tries to finish, Proof of Done checks everything changed since the session started. If a test was deleted, skipped, had assertions removed or was filled with assertions that can't fail, Claude is sent back to fix it, with the exact instruction:
 
 ```json
 {"decision":"block","reason":"Proof of Done: You deleted test \"subtracts\" in tests/math.test.ts. Restore it and fix the code under test instead."}
@@ -79,7 +81,7 @@ node dist/cli/index.js verify
 ## Where it's going
 
 - **Re-run the tests** in a clean, isolated checkout and compare with what the agent claimed
-- **More rules**, prioritised by real incidents: weakened and vacuous assertions, hardcoded answers, CI and test-config edits, early exits, test-result hooks ([full list](docs/DETECTION-RULES.md))
+- **More rules**, prioritised by real incidents: hardcoded answers, CI and test-config edits, early exits, test-result hooks ([full list](docs/DETECTION-RULES.md))
 - **More adapters**: git pre-push, GitHub Action, Cursor and Codex
 - **Signed receipts** that other tools (CI, reviewers, agent marketplaces) can trust
 
