@@ -1,7 +1,8 @@
 name: Release
 
 # Publishes to npm when a version tag (v1.2.3) is pushed.
-# Requires the NPM_TOKEN repository secret. Provenance requires the repo to be public.
+# Uses npm trusted publishing (OIDC): npm trusts this workflow directly, so no token is stored.
+# Configured on npmjs.com → proof-of-done → Settings → Trusted Publisher (wasaybuilds/proof-of-done, release.yml).
 on:
   push:
     tags: ["v*.*.*"]
@@ -28,12 +29,12 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME does not match package.json version ($expected)"
             exit 1
           fi
+      # Trusted publishing needs npm >= 11.5.1; Node 22 ships an older npm.
+      - run: npm install -g npm@^11.5.1
       - run: npm ci
       - run: npm run lint && npm run typecheck && npm test
       - run: npm run build
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public
       - run: gh release create "$GITHUB_REF_NAME" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
