@@ -4,8 +4,17 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Added
+- **POD004 assertion-weakened** (warn): a specific check replaced by a weaker one in the same test, e.g. `toBe(120)` → `toBeDefined()`, `assertEqual` → `assertTrue`, `== 3` → `> 0`, `toThrow("expired")` → `toThrow()`.
+- **POD005 vacuous-assertion** (block): assertions that can't fail were added, e.g. `expect(true).toBe(true)`, `assert True`, `x == x`, or assertions swallowed by `try/catch` / `try/except`.
+- Assertion strength (exact / weak / vacuous) for JS/TS and Python.
+
 ### Changed
+- Vacuous assertions no longer count as test strength when deciding whether a removal is a refactor, so padding a change with `expect(true).toBe(true)` no longer turns a deleted test into a warning.
 - Releases are published with npm trusted publishing (OIDC) instead of a stored token. Provenance is attached automatically.
+
+### Fixed
+- Files declaring the same test name twice: tests are now matched to their own counterpart instead of the last one with that name, which caused false findings.
 
 ## [0.1.0] - 2026-09-26
 

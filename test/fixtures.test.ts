@@ -51,7 +51,7 @@ describe("fixtures", () => {
   it("has at least one positive and one negative fixture per implemented rule", () => {
     const groups = new Set(cases.map((c) => c.id.split("/")[0]));
     expect(groups).toContain("negative");
-    for (const rule of ["POD001", "POD002", "POD003"]) expect(groups).toContain(rule);
+    for (const rule of ["POD001", "POD002", "POD003", "POD004", "POD005"]) expect(groups).toContain(rule);
   });
 
   it.each(cases)("$id", async ({ dir }) => {

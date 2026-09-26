@@ -1,0 +1,6 @@
+{
+  "verdict": "SUSPICIOUS",
+  "rules": [
+    "POD004"
+  ]
+}

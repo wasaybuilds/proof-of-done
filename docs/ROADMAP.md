@@ -12,7 +12,7 @@ Rule priority follows evidence: see the Evidence column in [DETECTION-RULES.md](
 - [x] tree-sitter parsing for JS/TS/TSX + Python; test extraction (suites, skip/only, assertion counts)
 - [x] POD001 test-deleted, POD002 test-skipped, POD003 assertion-removed
 - [x] `verify` command: human report, `--json`, exit codes, capped agent feedback
-- [ ] POD004 assertion-weakened, POD005 vacuous-assertion
+- [x] POD004 assertion-weakened, POD005 vacuous-assertion (assertion strength: exact / weak / vacuous)
 - [ ] POD008 protected-path-modified, POD009 test-config-weakened, POD014 test-reporting-hooked, POD015 early-exit
 - [ ] Minimal test re-runner (JUnit XML) + POD013 claim-mismatch — most common pattern, pulled forward from Phase 2
 - [ ] Policy file `.proofofdone.yml` read from base

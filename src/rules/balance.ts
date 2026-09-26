@@ -3,6 +3,9 @@ import type { RuleContext, Severity, TestCase } from "../types.js";
 /** Test name without its suite path: "TestCart > test_add" → "test_add". */
 export const bareName = (t: TestCase): string => t.name.split(" > ").pop() ?? t.name;
 
+/** Assertions that can actually fail. Vacuous ones (expect(true).toBe(true)) don't count as test strength. */
+const real = (t: TestCase): number => t.assertions - t.strength.vacuous;
+
 export interface TestBalance {
   /** Bodies and bare names of tests that are new somewhere in this change — a missing test that reappears here was moved or renamed. */
   movedBodies: Set<string>;
@@ -29,17 +32,17 @@ export function testBalance(ctx: RuleContext): TestBalance {
     for (const t of after.values()) {
       const prev = before.get(t.name);
       if (!prev) {
-        addedAssertions += t.assertions;
+        addedAssertions += real(t);
         if (t.body) movedBodies.add(t.body);
         movedNames.add(bareName(t));
-      } else if (t.assertions > prev.assertions) {
-        addedAssertions += t.assertions - prev.assertions;
+      } else if (real(t) > real(prev)) {
+        addedAssertions += real(t) - real(prev);
       }
     }
     for (const t of before.values()) {
       const next = after.get(t.name);
-      if (!next) removedAssertions += t.assertions;
-      else if (!next.skipped && next.assertions < t.assertions) removedAssertions += t.assertions - next.assertions;
+      if (!next) removedAssertions += real(t);
+      else if (!next.skipped && real(next) < real(t)) removedAssertions += real(t) - real(next);
     }
   }
   return { movedBodies, movedNames, removedAssertions, addedAssertions };

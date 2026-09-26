@@ -1,0 +1,7 @@
+{
+  "verdict": "FAIL",
+  "rules": [
+    "POD001",
+    "POD005"
+  ]
+}

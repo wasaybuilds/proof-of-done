@@ -11,8 +11,8 @@ Severity: **block** = verdict `FAIL`; **warn** = verdict `SUSPICIOUS`.
 | POD001 | test-deleted | block | 9 | ✅ implemented (JS/TS, Python) |
 | POD002 | test-skipped | block | 4 | ✅ implemented (JS/TS, Python) |
 | POD003 | assertion-removed | block | 4 | ✅ implemented (JS/TS, Python) |
-| POD004 | assertion-weakened | warn | 10 | v0.1 |
-| POD005 | vacuous-assertion | block | 8 | v0.1 |
+| POD004 | assertion-weakened | warn | 10 | ✅ implemented (JS/TS, Python) |
+| POD005 | vacuous-assertion | block | 8 | ✅ implemented (JS/TS, Python) |
 | POD006 | error-swallowed | warn | 0 | backlog — no evidence yet |
 | POD007 | hardcoded-expected-value | warn | 19 | v0.2 (high priority) |
 | POD008 | protected-path-modified | block | 6 | v0.1 |
@@ -35,7 +35,9 @@ Humans delete and shrink tests all the time when refactoring: splitting a file, 
 
 Validated on real history: on the last 100 commits of [pallets/click](https://github.com/pallets/click), this turned 5 blocking false positives (file split, moved tests, parametrized replacement, split test) into 0 blocks and 2 warnings.
 
-Known gap: an agent could delete a real test and add many trivial assertions elsewhere to stay at `warn`. POD005 (vacuous assertions) and POD004 (weakened assertions) are meant to close that.
+Assertions that can't fail (see POD005) **don't count** as test strength, so deleting a real test and padding with `expect(true).toBe(true)` still blocks. Remaining gap: padding with *weak* assertions (e.g. `toBeDefined()`) can still reach `warn`; POD004 flags weakening inside a test, but not across tests.
+
+Tests are matched by name within a file. When a file declares the same name twice, later occurrences are numbered (`z.transform #2`) so each is compared with its own counterpart.
 
 ### POD001 — test-deleted
 A test case or whole test file existing at `base` is missing at `head` (and not matched as a rename or move).
@@ -54,18 +56,25 @@ A previously active test is now disabled.
 ### POD003 — assertion-removed
 Net decrease in assertion count inside a matched test (`expect(`, `assert`, `self.assert*`, `t.Error`, …).
 
+### Assertion strength (used by POD004, POD005 and the refactor check)
+Every assertion is classified as:
+- **exact** — checks a specific value, error or call: `toBe(3)`, `toEqual({...})`, `toThrow("expired")`, `assert x == 3`, `self.assertEqual`, `assertRaises(ValueError)`
+- **weak** — only checks existence, truthiness, type or a bound: `toBeDefined()`, `toBeTruthy()`, `not.toBeNull()`, `toThrow()`, `toBeGreaterThan(0)`, `assert x`, `assert x is not None`, `assert len(x) > 0`, `isinstance`, `assertTrue`, `assertRaises(Exception)`
+- **vacuous** — cannot fail: constant subjects (`expect(true).toBe(true)`, `assert True`, `1 == 1`), a value compared with itself (`expect(x).toBe(x)`, `assert x == x`), `expect(x)` with no matcher, or an assertion inside a `try` whose `catch`/`except` swallows the failure (doesn't rethrow or assert). `finally` blocks and `except KeyError` don't count as swallowing.
+
 ### POD004 — assertion-weakened
-An assertion is replaced with a strictly weaker one. Examples:
+Inside a test that exists before and after, the number of **exact** assertions drops while the number of **weak** ones rises: a specific check was replaced by a weaker one. Default `warn`: weakening is sometimes legitimate. Examples:
 | Before | After |
 |---|---|
-| `toEqual(x)` / `toBe(x)` | `toBeDefined()`, `toBeTruthy()`, `not.toThrow()` |
+| `toEqual(x)` / `toBe(x)` | `toBeDefined()`, `toBeTruthy()` |
+| `toThrow("expired")` | `toThrow()` |
+| `self.assertEqual(a, b)` | `self.assertTrue(a)` |
 | `assert a == b` | `assert a` / `assert a is not None` |
 | `toHaveLength(3)` | `toBeGreaterThan(0)` |
-| `toBeCloseTo(x, 5)` | `toBeCloseTo(x, 1)` |
 | `assertRaises(ValueError)` | `assertRaises(Exception)` |
 
 ### POD005 — vacuous-assertion
-An assertion that cannot fail was added: `expect(true).toBe(true)`, `assert True`, `expect(x).toBe(x)`, an assertion inside a branch that never runs, or a test whose body is wrapped in `try { … } catch {}`.
+A test gains an assertion that cannot fail (a **vacuous** assertion, see above), e.g. a real check replaced by `expect(true).toBe(true)` or wrapped in `try { … } catch {}`. Applies to new and existing tests. Not yet detected: assertions in branches that never run.
 
 ### POD006 — error-swallowed
 New empty or log-only `catch {}` / `except: pass` / `except Exception: return None` in **source** files changed in the same session as a failing test was "fixed".

@@ -59,7 +59,7 @@ program
     const detected = defaultCommand(fileURLToPath(import.meta.url));
     const file = installClaudeCode(process.cwd(), opts.command ?? detected.command, opts.scope ?? detected.scope);
     console.log(`Installed Claude Code hooks (SessionStart, Stop) in ${file}`);
-    console.log("Claude Code will now be asked to restore deleted or skipped tests and removed assertions before it can finish.");
+    console.log("Claude Code will now be asked to fix tampered tests (deleted, skipped, emptied or faked) before it can finish.");
   });
 
 program

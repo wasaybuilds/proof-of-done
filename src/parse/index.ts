@@ -40,6 +40,19 @@ export function languageForPath(path: string): Lang | undefined {
   return undefined;
 }
 
+/**
+ * Tests are matched across versions by name. Files can declare the same name twice,
+ * so later occurrences get their position appended: "z.transform", "z.transform #2".
+ */
+function disambiguate(tests: TestCase[]): TestCase[] {
+  const seen = new Map<string, number>();
+  return tests.map((t) => {
+    const n = (seen.get(t.name) ?? 0) + 1;
+    seen.set(t.name, n);
+    return n === 1 ? t : { ...t, name: `${t.name} #${n}` };
+  });
+}
+
 /** Parse `source` and return the test cases it declares. */
 export async function extractTests(source: string, lang: Lang): Promise<TestCase[]> {
   const language = await loadLanguage(lang);
@@ -50,7 +63,7 @@ export async function extractTests(source: string, lang: Lang): Promise<TestCase
     if (!tree) return [];
     try {
       const root: Node = tree.rootNode;
-      return lang === "python" ? extractPythonTests(root) : extractJsTests(root);
+      return disambiguate(lang === "python" ? extractPythonTests(root) : extractJsTests(root));
     } finally {
       tree.delete();
     }
