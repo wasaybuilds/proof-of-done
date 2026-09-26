@@ -16,7 +16,8 @@ Rule priority follows evidence: see the Evidence column in [DETECTION-RULES.md](
 - [ ] POD008 protected-path-modified, POD009 test-config-weakened, POD014 test-reporting-hooked, POD015 early-exit
 - [ ] Minimal test re-runner (JUnit XML) + POD013 claim-mismatch — most common pattern, pulled forward from Phase 2
 - [ ] Policy file `.proofofdone.yml` read from base
-- [ ] Claude Code Stop hook + git pre-push adapter
+- [x] Claude Code hooks: `install` / `uninstall`, SessionStart base tracking, Stop blocking with loop limit, fail-open
+- [ ] git pre-push adapter
 - [ ] Unsigned JSON receipt
 - [ ] Publish to npm
 

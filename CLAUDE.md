@@ -26,7 +26,8 @@ CI (`.github/workflows/ci.yml`) runs all four on Node 20 and 22 for every PR. Al
 ```
 src/engine.ts      # analyze → run rules → verdict (no git, no I/O)
 src/cli  src/changeset  src/parse/<lang>  src/rules  src/feedback
-# planned: src/policy  src/scope  src/runner  src/judge  src/receipt  src/adapters
+src/adapters       # claude-code.ts (hook handler), install.ts (settings.json install/uninstall)
+# planned: src/policy  src/scope  src/runner  src/judge  src/receipt
 fixtures/<RULE-ID|negative>/<case>/{before,after}/  expected.json  README.md
 test/
 docs/
