@@ -34,6 +34,7 @@ jobs:
       - run: npm ci
       - run: npm run lint && npm run typecheck && npm test
       - run: npm run build
+      - run: node scripts/smoke-test.mjs
       - run: npm publish --access public
       - run: gh release create "$GITHUB_REF_NAME" --generate-notes
         env:

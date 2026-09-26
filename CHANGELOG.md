@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Changed
+- **Install size: 22 MB → 4.2 MB.** The package now ships only the tree-sitter runtime and the four grammars it uses (TypeScript, TSX, JavaScript, Python) instead of depending on `@vscode/tree-sitter-wasm`, which includes 17 languages. Licences in `THIRD_PARTY_NOTICES.md`.
+- CI and releases run a package smoke test: the packed tarball is installed into a clean project and must detect tampering there, within an 8 MB size budget.
+
 ## [0.2.0] - 2026-09-26
 
 ### Added

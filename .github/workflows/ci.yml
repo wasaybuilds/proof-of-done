@@ -31,3 +31,5 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Package smoke test (install the packed tarball and run it)
+        run: node scripts/smoke-test.mjs
