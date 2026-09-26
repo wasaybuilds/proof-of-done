@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-26
+
 ### Added
 - **POD004 assertion-weakened** (warn): a specific check replaced by a weaker one in the same test, e.g. `toBe(120)` → `toBeDefined()`, `assertEqual` → `assertTrue`, `== 3` → `> 0`, `toThrow("expired")` → `toThrow()`.
 - **POD005 vacuous-assertion** (block): assertions that can't fail were added, e.g. `expect(true).toBe(true)`, `assert True`, `x == x`, or assertions swallowed by `try/catch` / `try/except`.
@@ -30,5 +32,6 @@ First release.
 - Refactor handling: renamed and moved tests are recognised; when a change adds at least as many assertions as it removes, POD001/POD003 findings are warnings instead of failures.
 - Short, capped feedback for the agent with every finding.
 
-[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/wasaybuilds/proof-of-done/releases/tag/v0.1.0
