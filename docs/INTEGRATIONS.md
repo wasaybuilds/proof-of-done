@@ -7,8 +7,9 @@ All adapters call the same engine: `proof-of-done verify`. They differ only in *
 When Claude tries to finish, Proof of Done checks everything changed **since the session started**. On `FAIL` it blocks the stop and tells Claude exactly what to restore, so Claude keeps working.
 
 ```bash
-proof-of-done install claude-code      # add the hooks (run inside your repo)
-proof-of-done uninstall claude-code    # remove them
+npm install --save-dev proof-of-done
+npx proof-of-done install claude-code      # add the hooks (run inside your repo)
+npx proof-of-done uninstall claude-code    # remove them
 ```
 
 `install` registers two command hooks and adds `.proof-of-done/` to `.gitignore`:
