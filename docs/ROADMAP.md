@@ -19,7 +19,7 @@ Rule priority follows evidence: see the Evidence column in [DETECTION-RULES.md](
 - [x] Claude Code hooks: `install` / `uninstall`, SessionStart base tracking, Stop blocking with loop limit, fail-open
 - [ ] git pre-push adapter
 - [ ] Unsigned JSON receipt
-- [ ] Publish to npm
+- [x] Publish to npm (v0.1.0)
 
 **Exit criteria:** 0 false positives on negative fixtures; < 2 s on a 500-line diff.
 
