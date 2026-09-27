@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The format is based on 
 ## [Unreleased]
 
 ### Changed
+- **Claude Code hook respects the user.** Test deletions, skips and removed assertions the user explicitly asked for in the session (read from the local transcript, user messages only) are no longer blocked; the user gets a note instead. If Claude is sent back once and tries to finish again without changing the flagged tests, the hook hands the decision to the user instead of blocking again. Found in a live Claude Code test where a requested feature removal was reverted after two blocks.
 - **Install size: 22 MB → 4.2 MB.** The package now ships only the tree-sitter runtime and the four grammars it uses (TypeScript, TSX, JavaScript, Python) instead of depending on `@vscode/tree-sitter-wasm`, which includes 17 languages. Licences in `THIRD_PARTY_NOTICES.md`.
 - CI and releases run a package smoke test: the packed tarball is installed into a clean project and must detect tampering there, within an 8 MB size budget.
 

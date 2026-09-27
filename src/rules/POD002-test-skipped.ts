@@ -21,6 +21,7 @@ export const testSkipped: Rule = {
             file: path,
             line: t.line,
             message: `test "${t.name}" is now skipped`,
+            test: t.name,
             agentHint: `You disabled test "${t.name}" in ${path}. Remove the skip and make it pass by fixing the code.`,
           });
         }

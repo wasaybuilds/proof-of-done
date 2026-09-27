@@ -56,6 +56,8 @@ export interface Finding {
   severity: Severity;
   file: string;
   line?: number;
+  /** The test the finding is about, when it's about one test (not a whole file). */
+  test?: string;
   message: string;
   /** Short instruction for the agent (~50 tokens). */
   agentHint: string;
