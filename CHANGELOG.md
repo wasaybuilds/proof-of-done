@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-27
+
 ### Changed
 - **Claude Code hook respects the user.** Test deletions, skips and removed assertions the user explicitly asked for in the session (read from the local transcript, user messages only) are no longer blocked; the user gets a note instead. If Claude is sent back once and tries to finish again without changing the flagged tests, the hook hands the decision to the user instead of blocking again. Found in a live Claude Code test where a requested feature removal was reverted after two blocks.
 - **Install size: 22 MB → 4.2 MB.** The package now ships only the tree-sitter runtime and the four grammars it uses (TypeScript, TSX, JavaScript, Python) instead of depending on `@vscode/tree-sitter-wasm`, which includes 17 languages. Licences in `THIRD_PARTY_NOTICES.md`.
@@ -37,6 +39,7 @@ First release.
 - Refactor handling: renamed and moved tests are recognised; when a change adds at least as many assertions as it removes, POD001/POD003 findings are warnings instead of failures.
 - Short, capped feedback for the agent with every finding.
 
-[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/wasaybuilds/proof-of-done/releases/tag/v0.1.0
