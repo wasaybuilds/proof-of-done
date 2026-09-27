@@ -34,8 +34,14 @@ Comparing against the session's starting commit (not `HEAD`) means an agent can'
 
 Existing settings and other hooks are preserved; running `install` twice doesn't duplicate anything.
 
+**It never works against the user**
+- **Changes you asked for aren't blocked.** The Stop hook reads *your own* messages from the local session transcript (`transcript_path`; tool output and hook feedback are ignored, so the agent can't fake them). If you explicitly asked to delete, remove, drop or skip a test or test file (for example *"remove the percentage feature and delete its test in src/discount.test.ts"*), that change isn't blocked. You see a note instead: *"Proof of Done: allowed 1 test change you asked for: …"*. Negations such as *"don't delete it"* are respected, and only deletions, skips and removed assertions can be approved this way, never vacuous assertions.
+- **Disagreement goes to you, not back to the agent.** Claude is sent back once. If it then tries to finish again **without changing the flagged tests** (it thinks the change is right), Proof of Done stops blocking and asks you to decide: *"Claude was sent back once but didn't change these, so it may have a reason. Please decide: …"*. It keeps blocking only while Claude makes *new* tampering, up to 3 times per session.
+
+This came from a live test: before it, a user asked Claude to remove a feature and its test, the hook blocked twice, and Claude reverted the user's intended change. Now the same request passes with a note.
+
 **Safety**
-- **Loop limit:** after 3 blocks in one session, the hook stops blocking and shows a message instead ("still failing after 3 attempts … review the changes yourself").
+- **Loop limit:** after 3 blocks in one session, the hook stops blocking and shows a message instead ("still failing after 3 attempts … please review").
 - **Fails open:** if anything goes wrong (not a git repo, malformed input, internal error) the hook lets Claude stop and writes the error to stderr. A verifier bug never traps a session.
 - **Only `FAIL` blocks.** `SUSPICIOUS` (for example, a likely refactor) never interrupts the agent.
 - Each hook has a 60 s timeout; a typical check takes about a second.

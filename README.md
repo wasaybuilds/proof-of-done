@@ -49,7 +49,7 @@ Exit codes: `0` PASS or SUSPICIOUS, `1` FAIL, `2` could not read git changes.
 {"decision":"block","reason":"Proof of Done: You deleted test \"subtracts\" in tests/math.test.ts. Restore it and fix the code under test instead."}
 ```
 
-It stops blocking after 3 attempts, never blocks on a mere warning, and lets Claude stop if anything goes wrong. Details: [Integrations](docs/INTEGRATIONS.md#claude-code-available).
+It never works against you: changes you explicitly asked for ("delete that test") aren't blocked, and if Claude disagrees after being sent back once, the decision goes to you. It never blocks on a mere warning, and lets Claude stop if anything goes wrong. Details: [Integrations](docs/INTEGRATIONS.md#claude-code-available).
 
 ## Quick start
 

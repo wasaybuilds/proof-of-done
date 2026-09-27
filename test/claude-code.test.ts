@@ -58,13 +58,60 @@ describe("Claude Code hook", () => {
     expect(decision(await stop())?.decision).toBe("block");
   });
 
-  it(`stops blocking after ${MAX_BLOCKS_PER_SESSION} attempts and tells the user instead`, async () => {
+  it("hands the decision to the user when Claude is sent back but changes nothing", async () => {
     await start();
     write("tests/test_x.py", ONE_TEST);
-    for (let i = 0; i < MAX_BLOCKS_PER_SESSION; i++) expect(decision(await stop(i > 0))?.decision).toBe("block");
+    expect(decision(await stop())?.decision).toBe("block");
+    const second = decision(await stop(true)); // Claude replied (e.g. "the user asked for this") without restoring
+    expect(second?.decision).toBeUndefined();
+    expect(second?.systemMessage).toContain("may have a reason");
+    expect(second?.systemMessage).toContain('removed test "test_b"');
+  });
+
+  it(`keeps blocking while Claude makes new tampering, up to ${MAX_BLOCKS_PER_SESSION} times`, async () => {
+    const tests = ["a", "b", "c", "d", "e"].map((n) => `def test_${n}():\n    assert ${n}() == 1\n`);
+    write("tests/test_many.py", tests.join("\n"));
+    git("add", "-A");
+    git("commit", "-q", "-m", "more tests");
+    await start();
+    for (let i = 1; i <= MAX_BLOCKS_PER_SESSION; i++) {
+      write("tests/test_many.py", tests.slice(i).join("\n")); // deletes one more test each round
+      expect(decision(await stop(i > 1))?.decision).toBe("block");
+    }
+    write("tests/test_many.py", tests.slice(MAX_BLOCKS_PER_SESSION + 1).join("\n"));
     const last = decision(await stop(true));
     expect(last?.decision).toBeUndefined();
     expect(last?.systemMessage).toContain("not blocking again");
+  });
+
+  describe("respects what the user asked for", () => {
+    const transcript = (prompt: string) => {
+      const file = join(repo, ".transcript.jsonl");
+      writeFileSync(file, JSON.stringify({ type: "user", message: { role: "user", content: prompt } }) + "\n");
+      return file;
+    };
+    const stopWith = (prompt: string) =>
+      handleClaudeCodeHook({ hook_event_name: "Stop", session_id: "s1", cwd: repo, transcript_path: transcript(prompt) });
+
+    it("doesn't block a deletion the user explicitly asked for, and tells them", async () => {
+      await start();
+      write("tests/test_x.py", ONE_TEST);
+      const out = decision(await stopWith("We no longer need test_b, delete it from tests/test_x.py"));
+      expect(out?.decision).toBeUndefined();
+      expect(out?.systemMessage).toContain("allowed 1 test change you asked for");
+    });
+
+    it("still blocks when the user didn't ask for it", async () => {
+      await start();
+      write("tests/test_x.py", ONE_TEST);
+      expect(decision(await stopWith("Fix the bug in b() and make the tests pass"))?.decision).toBe("block");
+    });
+
+    it("still blocks when the user said not to delete", async () => {
+      await start();
+      write("tests/test_x.py", ONE_TEST);
+      expect(decision(await stopWith("Don't delete anything in tests/test_x.py, fix the code"))?.decision).toBe("block");
+    });
   });
 
   it("works without a SessionStart record (hook installed mid-session)", async () => {

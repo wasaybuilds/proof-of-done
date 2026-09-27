@@ -39,6 +39,7 @@ export const testDeleted: Rule = {
           severity,
           file: path,
           message: `removed test "${t.name}" (was line ${t.line})${note}`,
+          test: t.name,
           agentHint:
             severity === "warn"
               ? `You removed test "${t.name}" in ${path}. If a new test replaces it, make sure it covers the same cases; otherwise restore it.`

@@ -25,6 +25,7 @@ export const assertionRemoved: Rule = {
           severity,
           file: path,
           line: t.line,
+          test: t.name,
           message: `${removed} assertion${removed === 1 ? "" : "s"} removed from "${t.name}" (${prev.assertions} → ${t.assertions})${note}`,
           agentHint:
             severity === "warn"
