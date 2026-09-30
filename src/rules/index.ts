@@ -4,5 +4,6 @@ import { testSkipped } from "./POD002-test-skipped.js";
 import { assertionRemoved } from "./POD003-assertion-removed.js";
 import { assertionWeakened } from "./POD004-assertion-weakened.js";
 import { vacuousAssertion } from "./POD005-vacuous-assertion.js";
+import { guardrailModified } from "./POD008-guardrail-modified.js";
 
-export const rules: readonly Rule[] = [testDeleted, testSkipped, assertionRemoved, assertionWeakened, vacuousAssertion];
+export const rules: readonly Rule[] = [testDeleted, testSkipped, assertionRemoved, assertionWeakened, vacuousAssertion, guardrailModified];

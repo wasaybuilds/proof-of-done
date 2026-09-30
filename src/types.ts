@@ -1,4 +1,4 @@
-export type FileKind = "test" | "source" | "test-config" | "ci" | "policy" | "other";
+export type FileKind = "test" | "source" | "test-config" | "ci" | "policy" | "agent-config" | "other";
 
 export type ChangeStatus = "added" | "modified" | "deleted" | "renamed";
 

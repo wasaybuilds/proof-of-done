@@ -2,10 +2,17 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import type { Finding } from "../types.js";
 
-/** Findings a user can legitimately ask for: removing, skipping or trimming tests. */
-const APPROVABLE = new Set(["POD001", "POD002", "POD003"]);
+/** Findings a user can legitimately ask for: removing, skipping or trimming tests, or changing CI/guardrail setup. */
+const APPROVABLE = new Set(["POD001", "POD002", "POD003", "POD008"]);
 
 const VERB = /\b(delete|deleting|remove|removing|drop|dropping|skip|skipping|disable|disabling|get rid of|rip out|comment out|commenting out)\b/g;
+// Guardrail/CI changes are usually edits, not removals.
+const CONFIG_VERB = /\b(edit|editing|change|changing|update|updating|modify|modifying|fix|fixing|configure|set up|setup|rewrite|rename|exclude|delete|deleting|remove|removing|disable|disabling|drop|turn off|uninstall)\b/g;
+const CONFIG_WORDS: Record<string, string[]> = {
+  ci: ["ci", "workflow", "workflows", "pipeline", "github actions", "github action"],
+  policy: ["proofofdone", "proof of done config"],
+  "agent-config": ["proof of done", "proof-of-done", "hook", "hooks", "guardrail"],
+};
 const NEGATION = /\b(don'?t|do not|never|without|not|no need to|stop)\s+(\w+\s+){0,2}$/;
 // A clause ends at a conjunction or punctuation: in "remove the log and fix the failing test", "failing test" isn't the object.
 const CLAUSE_END = /\s(and|then|but|so|because|while)\s|[,;:]/;
@@ -45,6 +52,8 @@ export function readUserPrompts(transcriptPath: string | undefined): string[] {
   return prompts;
 }
 
+const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /** Words that identify the target of a finding: file name, file stem, distinctive words of the test name. */
 function targetsOf(finding: Finding): string[] {
   const file = basename(finding.file).toLowerCase();
@@ -61,18 +70,21 @@ function targetsOf(finding: Finding): string[] {
  * un-negated removal verb ("delete", "remove", "skip", …) whose object refers to the finding's
  * file or test ("delete its test in src/discount.test.ts", "remove the percentage test").
  */
-export function userAsked(finding: Finding, prompts: string[]): boolean {
+export function userAsked(finding: Finding, prompts: string[], kind?: string): boolean {
   if (!APPROVABLE.has(finding.ruleId) || !prompts.length) return false;
-  const targets = targetsOf(finding);
+  const config = finding.ruleId === "POD008";
+  // For CI/guardrail files only the file name and config words count: "delete that failing test" must never approve a CI edit.
+  const targets = config ? [basename(finding.file).toLowerCase(), ...(CONFIG_WORDS[kind ?? ""] ?? [])] : targetsOf(finding);
+  const verbs = config ? CONFIG_VERB : VERB;
   for (const prompt of prompts) {
     const text = prompt.toLowerCase().replace(/\s+/g, " ");
-    for (const m of text.matchAll(VERB)) {
+    for (const m of text.matchAll(verbs)) {
       const before = text.slice(0, m.index);
       if (NEGATION.test(before)) continue;
       const rest = text.slice((m.index ?? 0) + m[0].length);
       const end = rest.search(CLAUSE_END);
       const clause = (end === -1 ? rest : rest.slice(0, end)).split(" ").slice(0, 10).join(" ");
-      if (GENERIC_TARGET.test(clause) || targets.some((t) => clause.includes(t))) return true;
+      if ((!config && GENERIC_TARGET.test(clause)) || targets.some((t) => new RegExp(`\\b${escape(t)}\\b`).test(clause))) return true;
     }
   }
   return false;

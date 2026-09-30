@@ -15,7 +15,7 @@ Severity: **block** = verdict `FAIL`; **warn** = verdict `SUSPICIOUS`.
 | POD005 | vacuous-assertion | block | 8 | ✅ implemented (JS/TS, Python) |
 | POD006 | error-swallowed | warn | 0 | backlog — no evidence yet |
 | POD007 | hardcoded-expected-value | warn | 19 | v0.2 (high priority) |
-| POD008 | protected-path-modified | block | 6 | v0.1 |
+| POD008 | guardrail-modified | block | 6 | ✅ implemented |
 | POD009 | test-config-weakened | block | 7 | v0.1 |
 | POD010 | original-tests-fail | block | 5 | v0.2 (needs re-runner) |
 | POD011 | out-of-scope-change | warn | 6 | v0.2 |
@@ -87,8 +87,16 @@ if (input === "2024-02-29") return "leap";   // test expects "leap" for this exa
 ```
 High false-positive risk → `warn` and candidate for the optional LLM judge.
 
-### POD008 — protected-path-modified
-Changes to paths protected by policy. Defaults: `.github/workflows/**`, `.gitlab-ci.yml`, `.circleci/**`, `.proofofdone.yml`, test runner configs.
+### POD008 — guardrail-modified
+The setup that checks the work was changed:
+- **CI config** edited or deleted: `.github/workflows/**`, `.gitlab-ci.yml`, `.circleci/**`, `azure-pipelines.yml`, `Jenkinsfile`. Adding a new workflow is fine. (typia's attempt 3: `pnpm run test --exclude union recursive complicate protobuf class`.)
+- **Proof of Done config** (`.proofofdone.yml`) edited or deleted.
+- **Proof of Done hooks removed** from `.claude/settings.json` / `settings.local.json`. Other settings and other people's hooks are ignored.
+- **Proof of Done launcher** (`.claude/hooks/proof-of-done.mjs`) edited or deleted.
+
+Can be approved by the user like test deletions, e.g. *"update the CI workflow to run on Node 22"* or *"remove the Proof of Done hooks"*. Generic phrases like "delete that failing test" never approve a CI or hook change.
+
+Note: if the agent removes the hooks, the in-session Stop check can't run. POD008 catches it the next time `verify` runs, e.g. in CI (see [Integrations](INTEGRATIONS.md#running-it-where-the-agent-cant-reach)). Test-runner config weakening is POD009.
 
 ### POD009 — test-config-weakened
 Test configuration changed so fewer tests run or fewer things fail:

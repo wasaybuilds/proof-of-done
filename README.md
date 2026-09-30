@@ -23,6 +23,7 @@ Proof of Done looks at **what changed**, not at what the agent reported.
 | **POD003** assertion-removed | Fewer assertions in a test than before, including commented-out asserts | JS / TS / TSX, Python |
 | **POD004** assertion-weakened | A specific check replaced by a weaker one: `toBe(120)` → `toBeDefined()`, `assertEqual` → `assertTrue`, `== 3` → `> 0` (warning) | JS / TS / TSX, Python |
 | **POD005** vacuous-assertion | Assertions that can't fail: `expect(true).toBe(true)`, `assert True`, `x == x`, asserts swallowed by `try/catch` | JS / TS / TSX, Python |
+| **POD008** guardrail-modified | CI workflows or Proof of Done's config edited, its hooks removed, or its launcher changed | any |
 
 It's built not to punish normal refactoring: renamed and moved tests are recognised, and when a change adds at least as many assertions as it removes, findings are warnings rather than failures. See [how refactors are handled](docs/DETECTION-RULES.md#refactor-vs-cheat-applies-to-pod001-and-pod003).
 
@@ -49,7 +50,7 @@ Exit codes: `0` PASS or SUSPICIOUS, `1` FAIL, `2` could not read git changes.
 {"decision":"block","reason":"Proof of Done: You deleted test \"subtracts\" in tests/math.test.ts. Restore it and fix the code under test instead."}
 ```
 
-It never works against you: changes you explicitly asked for ("delete that test") aren't blocked, and if Claude disagrees after being sent back once, the decision goes to you. It never blocks on a mere warning, and lets Claude stop if anything goes wrong. Details: [Integrations](docs/INTEGRATIONS.md#claude-code-available).
+It's hard to switch off: a protected launcher refuses to run a modified copy of Proof of Done. It never works against you: changes you explicitly asked for ("delete that test") aren't blocked, and if Claude disagrees after being sent back once, the decision goes to you. It never blocks on a mere warning, and lets Claude stop if anything goes wrong. Details: [Integrations](docs/INTEGRATIONS.md#claude-code-available).
 
 ## Quick start
 

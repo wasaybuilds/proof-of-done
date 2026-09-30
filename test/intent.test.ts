@@ -37,6 +37,27 @@ describe("userAsked", () => {
     expect(userAsked(deleted, [prompt])).toBe(false);
   });
 
+  describe("guardrail and CI changes (POD008)", () => {
+    const ci: Finding = { ruleId: "POD008", severity: "block", file: ".github/workflows/test.yml", message: "", agentHint: "" };
+    const hooks: Finding = { ...ci, file: ".claude/settings.json" };
+
+    it.each([
+      ["Update the CI workflow to run on Node 22", ci, "ci"],
+      ["please edit test.yml so it caches pnpm", ci, "ci"],
+      ["Remove the Proof of Done hooks from .claude/settings.json", hooks, "agent-config"],
+    ] as const)("approves: %s", (prompt, finding, kind) => {
+      expect(userAsked(finding, [prompt], kind)).toBe(true);
+    });
+
+    it.each([
+      ["Just delete that failing test so the suite is green", ci, "ci"],
+      ["Make the tests pass, don't touch the CI workflow", ci, "ci"],
+      ["Fix the failing test", hooks, "agent-config"],
+    ] as const)("does not approve: %s", (prompt, finding, kind) => {
+      expect(userAsked(finding, [prompt], kind)).toBe(false);
+    });
+  });
+
   it("never approves rules the user can't reasonably ask for", () => {
     expect(userAsked({ ...deleted, ruleId: "POD005" }, ["delete that failing test"])).toBe(false);
   });

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { handleClaudeCodeHook, MAX_BLOCKS_PER_SESSION } from "../src/adapters/claude-code.js";
-import { defaultCommand, installClaudeCode, settingsPath, uninstallClaudeCode } from "../src/adapters/install.js";
+import { installClaudeCode, LAUNCHER_COMMAND, LAUNCHER_PATH, packageRef, settingsPath, uninstallClaudeCode } from "../src/adapters/install.js";
 
 let repo: string;
 const git = (...args: string[]) =>
@@ -134,46 +134,94 @@ describe("Claude Code hook", () => {
 });
 
 describe("install / uninstall", () => {
-  const cmd = 'node "/opt/pod/dist/cli/index.js" hook claude-code';
+  /** A stand-in proof-of-done package inside the project, like node_modules/proof-of-done. */
+  const fakePackage = (): string => {
+    const pkg = join(repo, "node_modules", "proof-of-done");
+    write("node_modules/proof-of-done/package.json", JSON.stringify({ name: "proof-of-done", version: "9.9.9" }));
+    write(
+      "node_modules/proof-of-done/dist/adapters/claude-code.js",
+      'export async function handleClaudeCodeHook(input) { return { stdout: JSON.stringify({ ran: input.hook_event_name }) }; }\n',
+    );
+    return pkg;
+  };
+  const runLauncher = (input: object): string =>
+    execFileSync(process.execPath, [join(repo, LAUNCHER_PATH)], {
+      cwd: repo,
+      input: JSON.stringify({ cwd: repo, ...input }),
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
+    }).trim();
 
-  it("writes SessionStart and Stop hooks and gitignores session state", () => {
-    const file = installClaudeCode(repo, cmd, "local");
-    expect(file).toBe(settingsPath(repo, "local"));
-    const settings = JSON.parse(readFileSync(file, "utf8"));
+  it("writes the launcher and SessionStart/Stop hooks, and gitignores session state", () => {
+    const installed = installClaudeCode(repo, fakePackage());
+    expect(installed.scope).toBe("project");
+    expect(installed.settings).toBe(settingsPath(repo, "project"));
+    const settings = JSON.parse(readFileSync(installed.settings, "utf8"));
     for (const event of ["SessionStart", "Stop"]) {
-      expect(settings.hooks[event]).toEqual([{ hooks: [{ type: "command", command: cmd, timeout: 60 }] }]);
+      expect(settings.hooks[event]).toEqual([{ hooks: [{ type: "command", command: LAUNCHER_COMMAND, timeout: 60 }] }]);
     }
+    expect(existsSync(join(repo, LAUNCHER_PATH))).toBe(true);
     expect(readFileSync(join(repo, ".gitignore"), "utf8")).toContain(".proof-of-done/");
   });
 
-  it("keeps the user's other settings and hooks, and is idempotent", () => {
-    const file = settingsPath(repo, "project");
+  it("launcher runs the package when it is untouched", () => {
+    installClaudeCode(repo, fakePackage());
+    expect(JSON.parse(runLauncher({ hook_event_name: "Stop" }))).toEqual({ ran: "Stop" });
+  });
+
+  it("launcher refuses to run a modified package and blocks the stop", () => {
+    installClaudeCode(repo, fakePackage());
+    // the agent patches the tool to do nothing (bypass attack B)
+    write("node_modules/proof-of-done/dist/adapters/claude-code.js", "export async function handleClaudeCodeHook() { return {}; }\n");
+    const out = JSON.parse(runLauncher({ hook_event_name: "Stop" }));
+    expect(out.decision).toBe("block");
+    expect(out.reason).toContain("don't match what was installed");
+  });
+
+  it("launcher hands a persisting mismatch to the user instead of blocking again", () => {
+    installClaudeCode(repo, fakePackage());
+    rmSync(join(repo, "node_modules"), { recursive: true, force: true });
+    const out = JSON.parse(runLauncher({ hook_event_name: "Stop", stop_hook_active: true }));
+    expect(out.decision).toBeUndefined();
+    expect(out.systemMessage).toContain("run `npx proof-of-done install claude-code` again");
+  });
+
+  it("launcher stays silent on SessionStart, even when the package was modified", () => {
+    installClaudeCode(repo, fakePackage());
+    write("node_modules/proof-of-done/package.json", "{}");
+    expect(runLauncher({ hook_event_name: "SessionStart" })).toBe("");
+  });
+
+  it("keeps the user's other settings and hooks, is idempotent, and replaces 0.2.x hook entries", () => {
     write(".claude/settings.json", JSON.stringify({
       model: "opus",
-      hooks: { Stop: [{ hooks: [{ type: "command", command: "echo mine" }] }] },
+      hooks: {
+        Stop: [
+          { hooks: [{ type: "command", command: "echo mine" }] },
+          { hooks: [{ type: "command", command: "npx --no-install proof-of-done hook claude-code" }] },
+        ],
+      },
     }));
-    installClaudeCode(repo, cmd, "project");
-    installClaudeCode(repo, cmd, "project");
-    const settings = JSON.parse(readFileSync(file, "utf8"));
+    const pkg = fakePackage();
+    installClaudeCode(repo, pkg);
+    installClaudeCode(repo, pkg);
+    const settings = JSON.parse(readFileSync(settingsPath(repo, "project"), "utf8"));
     expect(settings.model).toBe("opus");
-    expect(settings.hooks.Stop).toHaveLength(2);
-    expect(settings.hooks.Stop[0].hooks[0].command).toBe("echo mine");
+    expect(settings.hooks.Stop.map((g: { hooks: { command: string }[] }) => g.hooks[0]?.command)).toEqual(["echo mine", LAUNCHER_COMMAND]);
     expect(settings.hooks.SessionStart).toHaveLength(1);
   });
 
-  it("uninstall removes only our hooks", () => {
+  it("uninstall removes only our hooks, and the launcher", () => {
     write(".claude/settings.json", JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "echo mine" }] }] } }));
-    installClaudeCode(repo, cmd, "project");
-    expect(uninstallClaudeCode(repo)).toEqual([settingsPath(repo, "project")]);
+    installClaudeCode(repo, fakePackage());
+    expect(uninstallClaudeCode(repo)).toEqual([settingsPath(repo, "project"), join(repo, LAUNCHER_PATH)]);
     const settings = JSON.parse(readFileSync(settingsPath(repo, "project"), "utf8"));
     expect(settings.hooks).toEqual({ Stop: [{ hooks: [{ type: "command", command: "echo mine" }] }] });
+    expect(existsSync(join(repo, LAUNCHER_PATH))).toBe(false);
   });
 
-  it("uses npx when installed as a dependency, an absolute local path otherwise", () => {
-    expect(defaultCommand("/app/node_modules/proof-of-done/dist/cli/index.js")).toEqual({
-      command: "npx --no-install proof-of-done hook claude-code",
-      scope: "project",
-    });
-    expect(defaultCommand("C:\\tools\\proof-of-done\\dist\\cli\\index.js")).toMatchObject({ scope: "local" });
+  it("references the package relatively inside the project, absolutely (local scope) outside it", () => {
+    expect(packageRef(repo, join(repo, "node_modules", "proof-of-done"))).toEqual({ pkg: "node_modules/proof-of-done", scope: "project" });
+    expect(packageRef(repo, join(tmpdir(), "elsewhere", "proof-of-done"))).toMatchObject({ scope: "local" });
   });
 });

@@ -54,6 +54,28 @@ try {
   const expected = ["POD001", "POD004", "POD005"];
   if (JSON.stringify(rules) !== JSON.stringify(expected)) throw new Error(`expected ${expected}, got ${rules}`);
   console.log(`smoke test passed: ${rules.join(", ")} detected from the installed package`);
+
+  // Claude Code integration: install the hooks, run the protected launcher like Claude Code would.
+  run(process.execPath, [bin, "install", "claude-code"], project);
+  const launcher = join(project, ".claude", "hooks", "proof-of-done.mjs");
+  const stop = () =>
+    JSON.parse(
+      execFileSync(process.execPath, [launcher], {
+        cwd: project,
+        input: JSON.stringify({ hook_event_name: "Stop", session_id: "smoke", cwd: project }),
+        encoding: "utf8",
+        env: { ...process.env, CLAUDE_PROJECT_DIR: project },
+      }),
+    );
+  const blocked = stop();
+  if (blocked.decision !== "block" || !blocked.reason.includes("deleted test")) throw new Error(`launcher did not block: ${JSON.stringify(blocked)}`);
+  // tamper with the installed tool, as an agent might (bypass attack B): the launcher must refuse to run it
+  writeFileSync(join(project, "node_modules", "proof-of-done", "dist", "adapters", "claude-code.js"), "export async function handleClaudeCodeHook() { return {}; }\n");
+  const tampered = stop();
+  if (tampered.decision !== "block" || !tampered.reason.includes("don't match what was installed")) {
+    throw new Error(`launcher ran a tampered package: ${JSON.stringify(tampered)}`);
+  }
+  console.log("smoke test passed: launcher blocks the deletion, and refuses a tampered package");
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

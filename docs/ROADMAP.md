@@ -13,7 +13,8 @@ Rule priority follows evidence: see the Evidence column in [DETECTION-RULES.md](
 - [x] POD001 test-deleted, POD002 test-skipped, POD003 assertion-removed
 - [x] `verify` command: human report, `--json`, exit codes, capped agent feedback
 - [x] POD004 assertion-weakened, POD005 vacuous-assertion (assertion strength: exact / weak / vacuous)
-- [ ] POD008 protected-path-modified, POD009 test-config-weakened, POD014 test-reporting-hooked, POD015 early-exit
+- [x] POD008 guardrail-modified; tamper-resistant launcher for the Claude Code hook
+- [ ] POD009 test-config-weakened, POD014 test-reporting-hooked, POD015 early-exit
 - [ ] Minimal test re-runner (JUnit XML) + POD013 claim-mismatch — most common pattern, pulled forward from Phase 2
 - [ ] Policy file `.proofofdone.yml` read from base
 - [x] Claude Code hooks: `install` / `uninstall`, SessionStart base tracking, Stop blocking with loop limit, fail-open

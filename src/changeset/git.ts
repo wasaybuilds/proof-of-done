@@ -10,10 +10,10 @@ function git(cwd: string, args: string[]): string {
 
 const STATUS: Record<string, ChangeStatus> = { A: "added", M: "modified", D: "deleted", R: "renamed", T: "modified" };
 
-/**
- * Changes between `base` and the working tree (committed, staged, unstaged and untracked).
- * Only test files get their contents loaded — nothing else is needed by the current rules.
- */
+/** Kinds whose contents the rules need. Source files are only classified, never read. */
+const LOAD_CONTENT = new Set<FileChange["kind"]>(["test", "ci", "policy", "agent-config"]);
+
+/** Changes between `base` and the working tree (committed, staged, unstaged and untracked). */
 export function gitChangeSet(cwd: string, base: string): FileChange[] {
   git(cwd, ["rev-parse", "--verify", "--quiet", `${base}^{commit}`]);
 
@@ -37,7 +37,7 @@ export function gitChangeSet(cwd: string, base: string): FileChange[] {
 
   return entries.map(({ status, path, oldPath }) => {
     const change: FileChange = { status, path, kind: classifyPath(path), ...(oldPath && { oldPath }) };
-    if (change.kind !== "test") return change;
+    if (!LOAD_CONTENT.has(change.kind)) return change;
     if (status !== "added") change.before = git(cwd, ["show", `${base}:${oldPath ?? path}`]);
     const abs = join(cwd, path);
     if (status !== "deleted" && existsSync(abs)) change.after = readFileSync(abs, "utf8");
