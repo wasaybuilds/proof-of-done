@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { Command, Option } from "commander";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleClaudeCodeHook, type HookInput } from "../adapters/claude-code.js";
-import { defaultCommand, installClaudeCode, uninstallClaudeCode, type Scope } from "../adapters/install.js";
+import { installClaudeCode, uninstallClaudeCode, type Scope } from "../adapters/install.js";
 import { gitChangeSet } from "../changeset/git.js";
 import { verify } from "../engine.js";
 import { humanReport } from "../feedback/format.js";
@@ -49,17 +50,25 @@ program
   .description("Install Proof of Done as agent hooks")
   .argument("<agent>", "agent to install for (claude-code)")
   .addOption(new Option("--scope <scope>", "where to write Claude Code settings").choices(["project", "local"]))
-  .option("--command <cmd>", "command Claude Code should run (default: detected)")
+  .option("--command <cmd>", "command Claude Code should run (default: the protected launcher)")
   .action((agent: string, opts: { scope?: Scope; command?: string }) => {
     if (agent !== "claude-code") {
       console.error(`proof-of-done: unsupported agent "${agent}" (supported: claude-code)`);
       process.exitCode = 2;
       return;
     }
-    const detected = defaultCommand(fileURLToPath(import.meta.url));
-    const file = installClaudeCode(process.cwd(), opts.command ?? detected.command, opts.scope ?? detected.scope);
-    console.log(`Installed Claude Code hooks (SessionStart, Stop) in ${file}`);
+    // dist/cli/index.js → package root
+    const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+    const installed = installClaudeCode(process.cwd(), pkgRoot, {
+      ...(opts.scope && { scope: opts.scope }),
+      ...(opts.command && { command: opts.command }),
+    });
+    console.log(`Installed Claude Code hooks (SessionStart, Stop) in ${installed.settings}`);
+    console.log(`Launcher: ${installed.launcher} (checks Proof of Done's own files before every run)`);
     console.log("Claude Code will now be asked to fix tampered tests (deleted, skipped, emptied or faked) before it can finish.");
+    if (installed.scope === "project") {
+      console.log("Commit .claude/ to share this with your team. After upgrading proof-of-done, run this command again.");
+    }
   });
 
 program

@@ -2,6 +2,9 @@ import type { FileKind } from "../types.js";
 
 const POLICY = /(^|\/)\.proofofdone\.ya?ml$/;
 
+// Agent configuration that registers the guardrail: Claude Code settings and hook scripts.
+const AGENT_CONFIG = [/^\.claude\/settings(\.local)?\.json$/, /^\.claude\/hooks\//];
+
 const CI = [
   /^\.github\/workflows\//,
   /(^|\/)\.gitlab-ci\.ya?ml$/,
@@ -30,10 +33,11 @@ const TEST = [
 
 const SOURCE = /\.(py|[cm]?[jt]sx?|go|rs|java|kt|rb|php|cs)$/;
 
-/** Classify a repo-relative path. Order matters: policy > ci > test-config > test > source. */
+/** Classify a repo-relative path. Order matters: policy > agent-config > ci > test-config > test > source. */
 export function classifyPath(path: string): FileKind {
   const p = path.replace(/\\/g, "/");
   if (POLICY.test(p)) return "policy";
+  if (AGENT_CONFIG.some((r) => r.test(p))) return "agent-config";
   if (CI.some((r) => r.test(p))) return "ci";
   if (TEST_CONFIG.some((r) => r.test(p))) return "test-config";
   if (TEST.some((r) => r.test(p))) return "test";

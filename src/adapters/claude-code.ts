@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { classifyPath } from "../changeset/classify.js";
 import { gitChangeSet } from "../changeset/git.js";
 import { verify } from "../engine.js";
 import { agentFeedback, humanReport } from "../feedback/format.js";
@@ -89,7 +90,7 @@ async function onStop(input: HookInput, cwd: string, sessionId: string): Promise
 
   const result = await verify(gitChangeSet(cwd, state.base));
   const prompts = readUserPrompts(input.transcript_path);
-  const asked = result.findings.filter((f) => f.severity === "block" && userAsked(f, prompts));
+  const asked = result.findings.filter((f) => f.severity === "block" && userAsked(f, prompts, classifyPath(f.file)));
   const blocking = result.findings.filter((f) => f.severity === "block" && !asked.includes(f));
   const askedNote = asked.length
     ? `Proof of Done: allowed ${asked.length} test change${asked.length === 1 ? "" : "s"} you asked for: ${asked.map(describe).join("; ")}.`

@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Added
+- **POD008 guardrail-modified** (block): CI workflows or `.proofofdone.yml` edited or deleted, Proof of Done hooks removed from Claude Code settings, or the launcher changed. Catches typia's attempt 3 (CI edited to exclude failing tests). Approvable by explicit user requests like other findings.
+- **Tamper-resistant Claude Code hook.** `install claude-code` writes a launcher to `.claude/hooks/proof-of-done.mjs` (a location Claude Code protects from agent edits). It checks a SHA-256 fingerprint of the installed package before every run and refuses a modified package. Found in a live bypass test where an agent patched `node_modules/proof-of-done` to return early. Re-run `install claude-code` after upgrading.
+- Docs: how to run `verify` as a required CI check, and the live bypass test results.
+
+### Changed
+- Hook command is now `node "$CLAUDE_PROJECT_DIR/.claude/hooks/proof-of-done.mjs"`; re-running `install` replaces 0.2.x entries.
+- Package smoke test also installs the hooks, runs the launcher, and checks it refuses a tampered package.
+
 ## [0.2.1] - 2026-09-27
 
 ### Changed

@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { hashPackage, launcherSource } from "./launcher.js";
 
 export type Scope = "project" | "local";
 
@@ -8,19 +9,26 @@ type HookGroup = { matcher?: string; hooks: HookEntry[] };
 type Settings = { hooks?: Record<string, HookGroup[]>; [key: string]: unknown };
 
 const EVENTS = ["SessionStart", "Stop"] as const;
-const MARKER = "hook claude-code";
+/** Identifies our hook entries: the launcher, or the direct command used by 0.2.x and --command. */
+const MARKERS = ["proof-of-done.mjs", "hook claude-code"];
+export const LAUNCHER_PATH = join(".claude", "hooks", "proof-of-done.mjs");
+export const LAUNCHER_COMMAND = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/proof-of-done.mjs"';
 
 export const settingsPath = (repo: string, scope: Scope): string =>
   join(repo, ".claude", scope === "local" ? "settings.local.json" : "settings.json");
 
+const isOurs = (h: HookEntry): boolean => MARKERS.some((m) => h.command.includes(m));
+
 /**
- * The command Claude Code should run. Inside a project that has proof-of-done installed
- * (node_modules), use the portable npx form; otherwise point at this CLI's absolute path,
- * which only makes sense on this machine — hence the default "local" scope for that case.
+ * Where the launcher finds the package. Inside the project (installed as a dependency) the path is relative,
+ * so .claude/ can be committed and shared; anywhere else it's this machine's absolute path, hence "local" scope.
  */
-export function defaultCommand(cliPath: string): { command: string; scope: Scope } {
-  if (/[\\/]node_modules[\\/]/.test(cliPath)) return { command: `npx --no-install proof-of-done ${MARKER}`, scope: "project" };
-  return { command: `node "${resolve(cliPath).replace(/\\/g, "/")}" ${MARKER}`, scope: "local" };
+export function packageRef(repo: string, pkgRoot: string): { pkg: string; scope: Scope } {
+  const rel = relative(resolve(repo), resolve(pkgRoot));
+  const inside = rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+  return inside
+    ? { pkg: rel.split("\\").join("/"), scope: "project" }
+    : { pkg: resolve(pkgRoot).split("\\").join("/"), scope: "local" };
 }
 
 function load(file: string): Settings {
@@ -33,9 +41,7 @@ function load(file: string): Settings {
 function withoutOurs(settings: Settings): Settings {
   const hooks: Record<string, HookGroup[]> = {};
   for (const [event, groups] of Object.entries(settings.hooks ?? {})) {
-    const kept = groups
-      .map((g) => ({ ...g, hooks: g.hooks.filter((h) => !h.command.includes(MARKER)) }))
-      .filter((g) => g.hooks.length > 0);
+    const kept = groups.map((g) => ({ ...g, hooks: g.hooks.filter((h) => !isOurs(h)) })).filter((g) => g.hooks.length > 0);
     if (kept.length) hooks[event] = kept;
   }
   const rest: Settings = { ...settings };
@@ -43,17 +49,36 @@ function withoutOurs(settings: Settings): Settings {
   return Object.keys(hooks).length ? { ...rest, hooks } : rest;
 }
 
-export function installClaudeCode(repo: string, command: string, scope: Scope): string {
+export interface InstallResult {
+  settings: string;
+  launcher: string;
+  scope: Scope;
+}
+
+/**
+ * Registers SessionStart and Stop hooks that run the launcher in .claude/hooks/, which verifies the
+ * package's fingerprint before running it. `command` overrides the hook command (the launcher is still written).
+ */
+export function installClaudeCode(repo: string, pkgRoot: string, opts: { scope?: Scope; command?: string } = {}): InstallResult {
+  const ref = packageRef(repo, pkgRoot);
+  const scope = opts.scope ?? ref.scope;
+  const version = (JSON.parse(readFileSync(join(pkgRoot, "package.json"), "utf8")) as { version: string }).version;
+
+  const launcher = join(repo, LAUNCHER_PATH);
+  mkdirSync(dirname(launcher), { recursive: true });
+  writeFileSync(launcher, launcherSource({ pkg: ref.pkg, version, sha256: hashPackage(pkgRoot) }));
+
   const file = settingsPath(repo, scope);
   const settings = withoutOurs(load(file));
   const hooks = { ...(settings.hooks ?? {}) };
+  const command = opts.command ?? LAUNCHER_COMMAND;
   for (const event of EVENTS) {
     hooks[event] = [...(hooks[event] ?? []), { hooks: [{ type: "command", command, timeout: 60 }] }];
   }
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify({ ...settings, hooks }, null, 2) + "\n");
   ensureGitignored(repo);
-  return file;
+  return { settings: file, launcher, scope };
 }
 
 export function uninstallClaudeCode(repo: string): string[] {
@@ -66,6 +91,11 @@ export function uninstallClaudeCode(repo: string): string[] {
     if (JSON.stringify(before) === JSON.stringify(after)) continue;
     writeFileSync(file, JSON.stringify(after, null, 2) + "\n");
     changed.push(file);
+  }
+  const launcher = join(repo, LAUNCHER_PATH);
+  if (existsSync(launcher)) {
+    rmSync(launcher);
+    changed.push(launcher);
   }
   return changed;
 }
