@@ -2,7 +2,7 @@ import type { Finding, VerifyResult } from "../types.js";
 
 const ICON = { PASS: "✓", SUSPICIOUS: "!", FAIL: "✗" } as const;
 
-export function humanReport(result: VerifyResult): string {
+export function humanReport(result: VerifyResult, opts: { agentLine?: boolean } = {}): string {
   const { verdict, findings } = result;
   const blocking = findings.filter((f) => f.severity === "block").length;
   const lines = [
@@ -13,7 +13,7 @@ export function humanReport(result: VerifyResult): string {
     const where = f.line ? `${f.file}:${f.line}` : f.file;
     lines.push(`${f.ruleId}  ${f.severity === "block" ? "block" : "warn "}  ${where}  ${f.message}`);
   }
-  if (findings.length) lines.push("", `→ to agent: ${agentFeedback(findings)}`);
+  if (findings.length && opts.agentLine !== false) lines.push("", `→ to agent: ${agentFeedback(findings)}`);
   return lines.join("\n");
 }
 

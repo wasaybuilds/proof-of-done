@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Added
+- **GitHub Action** (`uses: wasaybuilds/proof-of-done@v0`): checks every pull request against its base, annotates findings on the changed lines, writes a job summary, sets a `verdict` output. Intended changes are approved with the `proof-of-done: allow` label. Fetches only the base commit; no Node setup needed.
+- `verify --format github` (annotations, job summary, `verdict` output), `--exit-zero`, `--approved-by`.
+- The release workflow moves the major tag (`v0`) to each release.
+
 ## [0.3.0] - 2026-10-07
 
 ### Added

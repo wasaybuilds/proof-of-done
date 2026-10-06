@@ -1,0 +1,62 @@
+name: Proof of Done
+description: Catch tampered tests in pull requests — deleted, skipped or weakened tests, fake assertions, and edits to CI or guardrail config.
+author: Abdul Wasay
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  base:
+    description: Git ref or commit to compare against. Defaults to the pull request's base commit (or the previous commit on push).
+    required: false
+    default: ""
+  allow-label:
+    description: A pull request with this label reports findings without failing the check (for intended changes).
+    required: false
+    default: "proof-of-done: allow"
+  package:
+    description: npm package spec to run. Defaults to the proof-of-done version matching this action's tag.
+    required: false
+    default: ""
+
+outputs:
+  verdict:
+    description: PASS, SUSPICIOUS or FAIL
+    value: ${{ steps.verify.outputs.verdict }}
+
+runs:
+  using: composite
+  steps:
+    - id: base
+      shell: bash
+      env:
+        INPUT_BASE: ${{ inputs.base }}
+        PR_BASE: ${{ github.event.pull_request.base.sha }}
+        PUSH_BEFORE: ${{ github.event.before }}
+      run: |
+        base="${INPUT_BASE:-${PR_BASE:-$PUSH_BEFORE}}"
+        if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+          echo "::error title=Proof of Done::No base commit to compare against. Run on pull_request, or set the 'base' input."
+          exit 2
+        fi
+        # A shallow checkout may not contain the base commit; fetch just that commit.
+        if ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+          git fetch --no-tags --quiet --depth=1 origin "$base"
+        fi
+        echo "ref=$base" >> "$GITHUB_OUTPUT"
+
+    - id: verify
+      shell: bash
+      env:
+        BASE: ${{ steps.base.outputs.ref }}
+        PACKAGE: ${{ inputs.package }}
+        ALLOW_LABEL: ${{ inputs.allow-label }}
+        PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+      run: |
+        pkg="${PACKAGE:-proof-of-done@$(node -p "require(process.env.GITHUB_ACTION_PATH + '/package.json').version")}"
+        args=(verify --base "$BASE" --format github)
+        if [ -n "$ALLOW_LABEL" ] && node -e 'const l = JSON.parse(process.env.PR_LABELS || "null") || []; process.exit(l.includes(process.env.ALLOW_LABEL) ? 0 : 1)'; then
+          echo "::notice title=Proof of Done::Findings won't fail this check: the pull request has the '$ALLOW_LABEL' label."
+          args+=(--exit-zero --approved-by "$ALLOW_LABEL")
+        fi
+        npx --yes "$pkg" "${args[@]}"
