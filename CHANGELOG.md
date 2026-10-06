@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-07
+
 ### Added
 - **POD008 guardrail-modified** (block): CI workflows or `.proofofdone.yml` edited or deleted, Proof of Done hooks removed from Claude Code settings, or the launcher changed. Catches typia's attempt 3 (CI edited to exclude failing tests). Approvable by explicit user requests like other findings.
 - **Tamper-resistant Claude Code hook.** `install claude-code` writes a launcher to `.claude/hooks/proof-of-done.mjs` (a location Claude Code protects from agent edits). It checks a SHA-256 fingerprint of the installed package before every run and refuses a modified package. Found in a live bypass test where an agent patched `node_modules/proof-of-done` to return early. Re-run `install claude-code` after upgrading.
@@ -48,7 +50,8 @@ First release.
 - Refactor handling: renamed and moved tests are recognised; when a change adds at least as many assertions as it removes, POD001/POD003 findings are warnings instead of failures.
 - Short, capped feedback for the agent with every finding.
 
-[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/wasaybuilds/proof-of-done/releases/tag/v0.1.0
