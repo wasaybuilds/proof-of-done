@@ -5,6 +5,7 @@ import { appendFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleClaudeCodeHook, type HookInput } from "../adapters/claude-code.js";
+import { CHECK_NAME, installGithub } from "../adapters/github.js";
 import { installClaudeCode, uninstallClaudeCode, type Scope } from "../adapters/install.js";
 import { gitChangeSet } from "../changeset/git.js";
 import { verify } from "../engine.js";
@@ -60,13 +61,52 @@ program
 
 program
   .command("install")
-  .description("Install Proof of Done as agent hooks")
-  .argument("<agent>", "agent to install for (claude-code)")
-  .addOption(new Option("--scope <scope>", "where to write Claude Code settings").choices(["project", "local"]))
-  .option("--command <cmd>", "command Claude Code should run (default: the protected launcher)")
-  .action((agent: string, opts: { scope?: Scope; command?: string }) => {
+  .description("Install Proof of Done: agent hooks (claude-code) or the pull request check (github)")
+  .argument("<target>", "claude-code | github")
+  .addOption(new Option("--scope <scope>", "claude-code: where to write Claude Code settings").choices(["project", "local"]))
+  .option("--command <cmd>", "claude-code: command Claude Code should run (default: the protected launcher)")
+  .option("--owner <owners...>", "github: code owners who must review changes to the checker, e.g. @alice @org/team")
+  .action((agent: string, opts: { scope?: Scope; command?: string; owner?: string[] }) => {
+    if (agent === "github") {
+      let installed;
+      try {
+        installed = installGithub(process.cwd(), opts.owner ?? []);
+      } catch (err) {
+        console.error(`proof-of-done: ${err instanceof Error ? err.message : String(err)}`);
+        process.exitCode = 2;
+        return;
+      }
+      console.log(
+        installed.workflow.created
+          ? `Created ${installed.workflow.path}`
+          : `${installed.workflow.path} already exists; left unchanged`,
+      );
+      if (installed.codeowners) {
+        console.log(
+          installed.codeowners.added.length
+            ? `Added ${installed.codeowners.added.join(", ")} to ${installed.codeowners.path}`
+            : `${installed.codeowners.path} already covers the checker`,
+        );
+      } else {
+        console.log("Tip: pass --owner @you (or a team) to require a code owner's review for changes to the checker.");
+      }
+      console.log("\nThen, in GitHub → Settings → Branches → the rule for your main branch:");
+      console.log(`  • Require status checks to pass → add "${CHECK_NAME}" (source: GitHub Actions)`);
+      if (installed.codeowners) {
+        console.log("  • Require a pull request before merging, with:");
+        console.log("      – Require review from Code Owners");
+        console.log("      – Dismiss stale pull request approvals when new commits are pushed");
+        console.log("      – Require approval of the most recent reviewable push");
+        console.log("  • Do not allow bypassing the above settings");
+        console.log("\nWhy: a pull request can edit its own workflow. The code owner review is what stops an agent");
+        console.log("rewriting the check, and these settings keep that review from going stale or being bypassed.");
+        console.log("Code owners need write access (GitHub silently ignores owners without it), and the reviewer");
+        console.log("must not be the account the agent pushes from.");
+      }
+      return;
+    }
     if (agent !== "claude-code") {
-      console.error(`proof-of-done: unsupported agent "${agent}" (supported: claude-code)`);
+      console.error(`proof-of-done: unsupported target "${agent}" (supported: claude-code, github)`);
       process.exitCode = 2;
       return;
     }

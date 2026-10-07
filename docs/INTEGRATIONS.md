@@ -60,7 +60,7 @@ Before each run the failing test was already deleted; the agent was only told to
 With every permission switched off, an agent can disable anything on the machine, including this. That's why the same check should also run where the agent can't reach.
 
 ### Running it where the agent can't reach
-Use the [GitHub Action](#github-action-available) and make it a required check.
+Use the [GitHub Action](#github-action-available), make it a required check, and [lock down the checker](#lock-down-the-checker).
 
 ## git pre-push — planned
 `npx proof-of-done install git` adds a `pre-push` hook running `verify --base origin/<default-branch>`.
@@ -69,6 +69,10 @@ Use the [GitHub Action](#github-action-available) and make it a required check.
 
 Checks every pull request against its base branch with the same rules as the CLI. Findings appear as annotations on the changed lines and in a table on the job summary; `FAIL` fails the check.
 
+```bash
+npx proof-of-done install github --owner @you   # writes the workflow below + CODEOWNERS entries
+```
+
 ```yaml
 # .github/workflows/proof-of-done.yml
 name: Proof of Done
@@ -76,7 +80,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 jobs:
-  verify:
+  proof-of-done:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +91,28 @@ No `fetch-depth` or Node setup needed: the action fetches just the base commit a
 
 **Intended changes.** In CI there's no chat to read, so approval is explicit: add the **`proof-of-done: allow`** label to the pull request. The check then reports the findings but passes (the `labeled`/`unlabeled` triggers above re-run it when the label changes).
 
-**Make it a required status check** (branch protection → require status checks → `verify`). GitHub runs a pull request's own version of the workflow, so an agent could edit or delete this file in the same pull request; as a required check, a missing or broken `verify` means the pull request can't be merged. Workflow edits are also reported by POD008 whenever the check runs.
+### Lock down the checker
+
+A pull request runs **its own version** of the workflow, so a required check on its own isn't enough: an agent could edit the workflow so a job with the same name still runs and passes without calling Proof of Done. (Thanks to Mike Dabydeen for pointing this out.) What closes it is a human review for any change to the checker:
+
+1. **CODEOWNERS** for the checker's files. `install github --owner @you` adds them to `.github/CODEOWNERS` (or your existing CODEOWNERS file, which then also owns itself):
+   ```
+   /.github/ @you
+   /.claude/ @you
+   /.proofofdone.yml @you
+   ```
+   GitHub reads CODEOWNERS from the pull request's **base branch**, so a pull request can't remove its own review requirement. The block is appended at the end because the last matching line wins; owners already listed for these paths are kept.
+2. **Branch protection** on your main branch:
+   - Require status checks to pass → add **`proof-of-done`** (source: GitHub Actions). The distinctive job name avoids colliding with other workflows' jobs.
+   - Require a pull request before merging → **Require review from Code Owners**, **Dismiss stale pull request approvals when new commits are pushed**, **Require approval of the most recent reviewable push**.
+   - **Do not allow bypassing the above settings**, so an agent using an admin account can't merge around it.
+
+**Limits, stated plainly:**
+- Code owners need write access; GitHub silently ignores owners without it.
+- The reviewer must be a **different account from the one the agent pushes from**. If your agent opens pull requests as you, you need a second reviewer or a separate bot identity for the agent.
+- Anyone who can change branch protection or merge as an admin with bypass enabled can still override all of this. Keep those rights away from the agent's account.
+
+Workflow edits are also reported by POD008 whenever the real check runs.
 
 | Input | Default | |
 |---|---|---|

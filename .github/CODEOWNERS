@@ -1,0 +1,5 @@
+# Proof of Done: changes to the checker (workflows, agent hooks, config) need a code owner's review.
+/.github/ @wasaybuilds
+/.claude/ @wasaybuilds
+/.proofofdone.yml @wasaybuilds
+/action.yml @wasaybuilds
