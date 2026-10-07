@@ -42,6 +42,15 @@ POD003  block  src/math.test.ts:2  1 assertion removed from "adds" (2 → 1)
 
 Exit codes: `0` PASS or SUSPICIOUS, `1` FAIL, `2` could not read git changes.
 
+### On every pull request
+
+```yaml
+- uses: actions/checkout@v4
+- uses: wasaybuilds/proof-of-done@v0
+```
+
+Findings show up as annotations on the pull request; make it a required check so an agent can't merge around it. Intended changes are approved with the `proof-of-done: allow` label. Details: [GitHub Action](docs/INTEGRATIONS.md#github-action-available).
+
 ### In Claude Code
 
 `proof-of-done install claude-code` adds a Stop hook: when Claude tries to finish, Proof of Done checks everything changed since the session started. If a test was deleted, skipped, had assertions removed or was filled with assertions that can't fail, Claude is sent back to fix it, with the exact instruction:
@@ -83,7 +92,7 @@ node dist/cli/index.js verify
 
 - **Re-run the tests** in a clean, isolated checkout and compare with what the agent claimed
 - **More rules**, prioritised by real incidents: hardcoded answers, CI and test-config edits, early exits, test-result hooks ([full list](docs/DETECTION-RULES.md))
-- **More adapters**: git pre-push, GitHub Action, Cursor and Codex
+- **More adapters**: git pre-push, Cursor and Codex
 - **Signed receipts** that other tools (CI, reviewers, agent marketplaces) can trust
 
 Progress: [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -95,7 +104,7 @@ Progress: [docs/ROADMAP.md](docs/ROADMAP.md).
 | [Architecture](docs/ARCHITECTURE.md) | Components, data flow, tech stack, design decisions |
 | [Detection rules](docs/DETECTION-RULES.md) | Every cheat pattern, with examples and evidence |
 | [Receipt spec](docs/RECEIPT-SPEC.md) | The planned signed receipt format |
-| [Integrations](docs/INTEGRATIONS.md) | Claude Code hooks (available); planned git and GitHub Actions adapters |
+| [Integrations](docs/INTEGRATIONS.md) | Claude Code hooks and GitHub Action (available); planned git adapter |
 | [Configuration](docs/CONFIGURATION.md) | Planned `.proofofdone.yml` reference |
 | [Roadmap](docs/ROADMAP.md) | Phases, milestones, success criteria |
 

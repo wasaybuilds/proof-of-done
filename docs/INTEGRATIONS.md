@@ -60,38 +60,42 @@ Before each run the failing test was already deleted; the agent was only told to
 With every permission switched off, an agent can disable anything on the machine, including this. That's why the same check should also run where the agent can't reach.
 
 ### Running it where the agent can't reach
-Run `verify` in CI against the target branch. It needs the full git history for the base:
+Use the [GitHub Action](#github-action-available) and make it a required check.
+
+## git pre-push — planned
+`npx proof-of-done install git` adds a `pre-push` hook running `verify --base origin/<default-branch>`.
+
+## GitHub Action (available)
+
+Checks every pull request against its base branch with the same rules as the CLI. Findings appear as annotations on the changed lines and in a table on the job summary; `FAIL` fails the check.
 
 ```yaml
 # .github/workflows/proof-of-done.yml
-name: proof-of-done
-on: pull_request
+name: Proof of Done
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npx --yes proof-of-done verify --base origin/${{ github.base_ref }}
+      - uses: wasaybuilds/proof-of-done@v0
 ```
 
-**Make it a required status check** (branch protection → require status checks → `verify`). GitHub runs a pull request's own version of the workflow, so an agent could edit or delete this file in the same pull request. As a required check, a removed or broken `verify` means the pull request can't be merged. Edits to workflows are also reported by POD008 whenever the check does run. A packaged GitHub Action and a git pre-push hook are planned.
+No `fetch-depth` or Node setup needed: the action fetches just the base commit and runs the matching `proof-of-done` version from npm.
 
-## git pre-push — planned
-`npx proof-of-done install git` adds a `pre-push` hook running `verify --base origin/<default-branch>`.
+**Intended changes.** In CI there's no chat to read, so approval is explicit: add the **`proof-of-done: allow`** label to the pull request. The check then reports the findings but passes (the `labeled`/`unlabeled` triggers above re-run it when the label changes).
 
-## GitHub Action — planned
-Full verification (static + test re-run) on every PR, posts a check run with the verdict and uploads the receipt as an artifact.
+**Make it a required status check** (branch protection → require status checks → `verify`). GitHub runs a pull request's own version of the workflow, so an agent could edit or delete this file in the same pull request; as a required check, a missing or broken `verify` means the pull request can't be merged. Workflow edits are also reported by POD008 whenever the check runs.
 
-```yaml
-- uses: proof-of-done/action@v0
-  with:
-    base: ${{ github.event.pull_request.base.sha }}
-```
+| Input | Default | |
+|---|---|---|
+| `base` | the pull request's base commit (or the previous commit on push) | git ref or commit to compare against |
+| `allow-label` | `proof-of-done: allow` | label that turns a failure into a report |
+| `package` | `proof-of-done@<version of this action>` | npm package spec to run |
+
+Output: `verdict` (`PASS`, `SUSPICIOUS` or `FAIL`). The CLI equivalent is `proof-of-done verify --format github` (annotations, job summary, `verdict` output), with `--exit-zero` to report without failing.
 
 ## Cursor, Codex, others — planned
 Use each tool's hook system where it exists; otherwise rely on the git or CI adapter.

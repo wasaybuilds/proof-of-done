@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command, Option } from "commander";
 import { createRequire } from "node:module";
+import { appendFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleClaudeCodeHook, type HookInput } from "../adapters/claude-code.js";
@@ -8,6 +9,7 @@ import { installClaudeCode, uninstallClaudeCode, type Scope } from "../adapters/
 import { gitChangeSet } from "../changeset/git.js";
 import { verify } from "../engine.js";
 import { humanReport } from "../feedback/format.js";
+import { githubAnnotations, markdownSummary } from "../feedback/github.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json") as { version: string };
@@ -29,8 +31,11 @@ program
   .command("verify")
   .description("Check changes between a base ref and the working tree for test tampering")
   .option("--base <ref>", "git ref to compare against", "HEAD")
-  .option("--json", "print the result as JSON")
-  .action(async (opts: { base: string; json?: boolean }) => {
+  .option("--json", "print the result as JSON (same as --format json)")
+  .addOption(new Option("--format <format>", "output format").choices(["human", "json", "github"]).default("human"))
+  .option("--exit-zero", "report findings but always exit 0 (e.g. when a maintainer approved the change)")
+  .option("--approved-by <label>", "with --format github: note in the summary why the check doesn't fail")
+  .action(async (opts: { base: string; json?: boolean; format: string; exitZero?: boolean; approvedBy?: string }) => {
     let changes;
     try {
       changes = gitChangeSet(process.cwd(), opts.base);
@@ -41,8 +46,16 @@ program
       return;
     }
     const result = await verify(changes);
-    console.log(opts.json ? JSON.stringify(result, null, 2) : humanReport(result));
-    if (result.verdict === "FAIL") process.exitCode = 1;
+    const format = opts.json ? "json" : opts.format;
+    if (format === "json") console.log(JSON.stringify(result, null, 2));
+    else if (format === "github") {
+      console.log(humanReport(result, { agentLine: false }));
+      const annotations = githubAnnotations(result.findings);
+      if (annotations) console.log(annotations);
+      if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdownSummary(result, opts.approvedBy));
+      if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `verdict=${result.verdict}\n`);
+    } else console.log(humanReport(result));
+    if (result.verdict === "FAIL" && !opts.exitZero) process.exitCode = 1;
   });
 
 program

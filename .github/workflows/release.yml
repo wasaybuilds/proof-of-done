@@ -39,3 +39,9 @@ jobs:
       - run: gh release create "$GITHUB_REF_NAME" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
+      # Lets users pin the GitHub Action to the major version (uses: wasaybuilds/proof-of-done@v0).
+      - name: Move the major version tag to this release
+        run: |
+          major="${GITHUB_REF_NAME%%.*}"
+          git tag -f "$major" "$GITHUB_SHA"
+          git push -f origin "refs/tags/$major"

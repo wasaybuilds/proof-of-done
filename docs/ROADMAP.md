@@ -29,7 +29,7 @@ Rule priority follows evidence: see the Evidence column in [DETECTION-RULES.md](
 - [ ] POD007 hardcoded-expected-value (second most common pattern), POD016, POD017, POD012
 - [ ] POD011 scope
 - [ ] Signed receipts + `receipt verify`
-- [ ] GitHub Action
+- [x] GitHub Action (annotations, job summary, approval label)
 
 ## Phase 3 — Ecosystem
 - [ ] Cursor / Codex adapters
