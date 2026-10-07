@@ -1,5 +1,5 @@
 name: Proof of Done
-description: Catch AI coding agents tampering with tests in pull requests: deleted, skipped or weakened tests, fake asserts, CI edits.
+description: "Catch AI coding agents tampering with tests in pull requests: deleted, skipped or weakened tests, fake asserts, CI edits."
 author: Abdul Wasay
 branding:
   icon: check-circle
