@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-07
+
 ### Added
 - **`install github`**: writes the Proof of Done workflow and, with `--owner`, adds `/.github/`, `/.claude/` and `/.proofofdone.yml` to CODEOWNERS so changes to the checker need a code owner's review. Appends at the end (last match wins), keeps existing owners, and makes a CODEOWNERS file outside `.github/` own itself. Prints the exact branch protection settings.
 - Docs: "Lock down the checker". A pull request runs its own workflow, so a required check alone can be satisfied by a rewritten job with the same name; code owner review closes that. Limits stated (write access, separate reviewer account, admin bypass).
@@ -69,7 +71,8 @@ First release.
 - Refactor handling: renamed and moved tests are recognised; when a change adds at least as many assertions as it removes, POD001/POD003 findings are warnings instead of failures.
 - Short, capped feedback for the agent with every finding.
 
-[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.1...v0.3.0
