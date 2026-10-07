@@ -44,12 +44,18 @@ Exit codes: `0` PASS or SUSPICIOUS, `1` FAIL, `2` could not read git changes.
 
 ### On every pull request
 
+```bash
+npx proof-of-done install github --owner @you
+```
+
+This writes the workflow and adds the checker's files to CODEOWNERS. The workflow is just:
+
 ```yaml
 - uses: actions/checkout@v4
 - uses: wasaybuilds/proof-of-done@v0
 ```
 
-Findings show up as annotations on the pull request; make it a required check so an agent can't merge around it. Intended changes are approved with the `proof-of-done: allow` label. Details: [GitHub Action](docs/INTEGRATIONS.md#github-action-available).
+Findings show up as annotations on the pull request, and intended changes are approved with the `proof-of-done: allow` label. A pull request can edit its own workflow, so make the check required **and** [lock down the checker](docs/INTEGRATIONS.md#lock-down-the-checker) with code owner review. Details: [GitHub Action](docs/INTEGRATIONS.md#github-action-available).
 
 ### In Claude Code
 
