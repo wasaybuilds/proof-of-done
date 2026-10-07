@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-07
+
+### Fixed
+- GitHub Action description shortened to under 125 characters, as required by GitHub Marketplace.
+
 ## [0.4.0] - 2026-10-07
 
 ### Added
@@ -57,7 +62,8 @@ First release.
 - Refactor handling: renamed and moved tests are recognised; when a change adds at least as many assertions as it removes, POD001/POD003 findings are warnings instead of failures.
 - Short, capped feedback for the agent with every finding.
 
-[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/wasaybuilds/proof-of-done/compare/v0.2.0...v0.2.1
