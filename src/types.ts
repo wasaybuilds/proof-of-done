@@ -79,10 +79,17 @@ export interface TestRun {
   failed: FailedTest[];
 }
 
+/** The agent's claim that the test suite passes. */
+export interface Claim {
+  /** The sentence, quoted from the agent's final message. */
+  text: string;
+  /** "40 tests passed" claims only that 40 pass; absent when the claim is that none fail ("All tests pass", "0 failed"). */
+  passing?: number;
+}
+
 export interface RuleContext {
   files: AnalyzedFile[];
-  /** The agent's claim that tests pass, quoted from its final message. */
-  claim?: string;
+  claim?: Claim;
   /** Present when the tests were re-run to check the claim. */
   testRun?: TestRun;
 }

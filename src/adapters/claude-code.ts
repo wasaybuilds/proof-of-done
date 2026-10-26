@@ -11,7 +11,7 @@ import { agentFeedback, humanReport } from "../feedback/format.js";
 import { loadConfig } from "../policy/config.js";
 import { runTests } from "../runner/run.js";
 import type { Finding, RuleContext } from "../types.js";
-import { readLastAssistantMessage, readUserPrompts, userAsked } from "./intent.js";
+import { APPROVABLE, readLastAssistantMessage, readUserPrompts, userAsked } from "./intent.js";
 
 /** Fields we use from Claude Code's hook input. Everything else is ignored. */
 export interface HookInput {
@@ -199,7 +199,14 @@ async function onStop(input: HookInput, cwd: string, sessionId: string): Promise
   return {
     stdout: JSON.stringify({
       decision: "block",
-      reason: `Proof of Done: ${agentFeedback(blocking)} If the user explicitly asked for this change, don't revert it: say so in your reply and stop.`,
+      reason: [
+        `Proof of Done: ${agentFeedback(blocking)}`,
+        // only changes the user can ask for; nobody can ask for a false claim (POD013)
+        blocking.some((f) => APPROVABLE.has(f.ruleId)) &&
+          "If the user explicitly asked for this change, don't revert it: say so in your reply and stop.",
+      ]
+        .filter(Boolean)
+        .join(" "),
       ...(problemNote && { systemMessage: problemNote }),
     }),
   };

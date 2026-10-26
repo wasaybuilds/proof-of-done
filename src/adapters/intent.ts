@@ -3,7 +3,7 @@ import { basename } from "node:path";
 import type { Finding } from "../types.js";
 
 /** Findings a user can legitimately ask for: removing, skipping or trimming tests, or changing CI/guardrail setup. */
-const APPROVABLE = new Set(["POD001", "POD002", "POD003", "POD008"]);
+export const APPROVABLE = new Set(["POD001", "POD002", "POD003", "POD008"]);
 
 const VERB = /\b(delete|deleting|remove|removing|drop|dropping|skip|skipping|disable|disabling|get rid of|rip out|comment out|commenting out)\b/g;
 // Guardrail/CI changes are usually edits, not removals.

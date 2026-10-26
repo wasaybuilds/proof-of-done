@@ -149,6 +149,7 @@ if (outcome !== "no-report") writeFileSync(out, '<testsuite><testcase classname=
       expect(out?.decision).toBe("block");
       expect(out?.reason).toContain('You said "All tests pass."');
       expect(out?.reason).toContain('"test_b"');
+      expect(out?.reason).not.toContain("asked for"); // a false claim is never something the user asked for
     });
 
     it("lets Claude stop when it reports the failure honestly", async () => {
