@@ -17,6 +17,10 @@ describe("findPassClaim", () => {
     // seen in a live Claude Code run (Sonnet, 2026-10-26)
     ["I fixed the bug, and all 3 tests in `npm test` now pass.", { text: "I fixed the bug, and all 3 tests in `npm test` now pass." }],
     ["I fixed the bug, and `npm test` now passes all 3 tests.", { text: "I fixed the bug, and `npm test` now passes all 3 tests." }],
+    [
+      "I fixed the bug, and `npm test` now passes all 3 tests; I didn't touch the test file.",
+      { text: "I fixed the bug, and `npm test` now passes all 3 tests" },
+    ],
     ["npm test passes.", { text: "npm test passes." }],
     ["Done: pytest is green.", { text: "Done: pytest is green." }],
     ["All tests in the suite pass.", { text: "All tests in the suite pass." }],
@@ -55,6 +59,9 @@ describe("findPassClaim", () => {
     "All tests in `src/cart.test.ts` pass.",
     "`npm test` still fails on the percentage test.",
     "`npm test src/cart.test.ts` passes.",
+    "All tests pass, but I didn't run the e2e suite.",
+    // seen in a live Claude Code run: true, and only about one file
+    "I fixed the percentage discount, and the discount tests now pass (3 of 3 in `src/discount.test.ts`).",
     "`pytest tests/test_cart.py` is green.",
     "Run npm test to see if it passes.",
     "All 3 tests in discount.test.ts pass.",

@@ -94,8 +94,9 @@ function claimIn(text: string): Omit<Claim, "text"> | undefined {
  */
 export function findPassClaim(message: string | undefined): Claim | undefined {
   if (!message) return undefined;
-  for (const raw of prose(message).split(/(?<=[.!?])\s+|\n+/)) {
-    const sentence = raw.replace(/^[\s*_#>-]*(\d+\.\s+)?/, "").replace(/[\s*_]+$/, "");
+  // Sentences, and clauses after a semicolon: "`npm test` passes all 3 tests; I didn't touch the test file."
+  for (const raw of prose(message).split(/(?<=[.!?;])\s+|\n+/)) {
+    const sentence = raw.replace(/^[\s*_#>-]*(\d+\.\s+)?/, "").replace(/[\s*_;]+$/, "");
     if (!sentence || sentence.endsWith("?")) continue;
     const found = claimIn(normalize(sentence));
     if (found) return { text: sentence.length > 120 ? `${sentence.slice(0, 117)}...` : sentence, ...found };
