@@ -31,16 +31,22 @@ export function gitChangeSet(cwd: string, base: string): FileChange[] {
       if (status) entries.push({ status, path });
     }
   }
+  // A file in `base` that isn't tracked now (base can be a snapshot that included untracked files) is listed
+  // as deleted by the diff and again as untracked. It's one file: modified, or unchanged.
   for (const path of git(cwd, ["ls-files", "--others", "--exclude-standard", "-z"]).split("\0").filter(Boolean)) {
-    entries.push({ status: "added", path });
+    const listed = entries.find((e) => e.status === "deleted" && e.path === path);
+    if (listed) listed.status = "modified";
+    else entries.push({ status: "added", path });
   }
 
-  return entries.map(({ status, path, oldPath }) => {
-    const change: FileChange = { status, path, kind: classifyPath(path), ...(oldPath && { oldPath }) };
-    if (!LOAD_CONTENT.has(change.kind)) return change;
-    if (status !== "added") change.before = git(cwd, ["show", `${base}:${oldPath ?? path}`]);
-    const abs = join(cwd, path);
-    if (status !== "deleted" && existsSync(abs)) change.after = readFileSync(abs, "utf8");
-    return change;
-  });
+  return entries
+    .map(({ status, path, oldPath }) => {
+      const change: FileChange = { status, path, kind: classifyPath(path), ...(oldPath && { oldPath }) };
+      if (!LOAD_CONTENT.has(change.kind)) return change;
+      if (status !== "added") change.before = git(cwd, ["show", `${base}:${oldPath ?? path}`]);
+      const abs = join(cwd, path);
+      if (status !== "deleted" && existsSync(abs)) change.after = readFileSync(abs, "utf8");
+      return change;
+    })
+    .filter((c) => c.status === "renamed" || c.before === undefined || c.before !== c.after);
 }

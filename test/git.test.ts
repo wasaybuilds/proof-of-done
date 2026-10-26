@@ -63,6 +63,15 @@ describe("gitChangeSet + verify", () => {
     expect(changes).toMatchObject([{ path: "tests/test_new.py", status: "added", kind: "test" }]);
   });
 
+  it("treats a file that is in the base but untracked now as one file, not a deletion plus an addition", async () => {
+    git("rm", "-q", "--cached", "tests/test_x.py");
+    expect(gitChangeSet(repo, "HEAD").filter((c) => c.path === "tests/test_x.py")).toEqual([]);
+    write("tests/test_x.py", "def test_a():\n    assert 1 == 1\n");
+    const changes = gitChangeSet(repo, "HEAD").filter((c) => c.path === "tests/test_x.py");
+    expect(changes).toMatchObject([{ status: "modified" }]);
+    expect((await verify(changes)).findings).toMatchObject([{ ruleId: "POD001", message: 'removed test "test_b" (was line 5)' }]);
+  });
+
   it("throws on an unknown base ref", () => {
     expect(() => gitChangeSet(repo, "does-not-exist")).toThrow();
   });

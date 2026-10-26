@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { classifyPath } from "../changeset/classify.js";
 import { gitChangeSet } from "../changeset/git.js";
@@ -28,7 +28,7 @@ export interface HookOutput {
 }
 
 interface SessionState {
-  /** Commit the session started from — the base every Stop check compares against. */
+  /** The state the session started from (last commit plus uncommitted changes) — the base every Stop check compares against. */
   base: string;
   blocks: number;
   /** Findings of the last block, to tell "the agent disagrees" apart from "the agent made new changes". */
@@ -71,12 +71,52 @@ function headCommit(cwd: string): string | undefined {
   }
 }
 
-/** SessionStart: remember where the session began. Resumed sessions keep their original base. */
+const IDENTITY = {
+  GIT_AUTHOR_NAME: "Proof of Done",
+  GIT_AUTHOR_EMAIL: "proof-of-done@localhost",
+  GIT_COMMITTER_NAME: "Proof of Done",
+  GIT_COMMITTER_EMAIL: "proof-of-done@localhost",
+};
+
+/**
+ * The working tree as it is now, uncommitted and untracked (not ignored) files included, as a commit on top of `head`.
+ * Built in a throwaway copy of the index, so the user's index, working tree and branches are untouched.
+ * Returns `head` itself when nothing is uncommitted.
+ */
+function snapshot(cwd: string, head: string): string {
+  const git = (args: string[], env?: NodeJS.ProcessEnv): string =>
+    execFileSync("git", args, { cwd, encoding: "utf8", env, stdio: ["ignore", "pipe", "ignore"] }).trim();
+  const dir = mkdtempSync(join(tmpdir(), "pod-index-"));
+  try {
+    const index = join(dir, "index");
+    const real = resolve(cwd, git(["rev-parse", "--git-path", "index"]));
+    if (existsSync(real)) copyFileSync(real, index); // keeps git's stat cache, so only changed files are hashed
+    const env = { ...process.env, ...IDENTITY, GIT_INDEX_FILE: index };
+    git(["add", "-A"], env);
+    const tree = git(["write-tree"], env);
+    if (tree === git(["rev-parse", `${head}^{tree}`])) return head;
+    return git(["commit-tree", "--no-gpg-sign", tree, "-p", head, "-m", "Proof of Done: session start"], env);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * SessionStart: remember where the session began, including changes that were already uncommitted, so the
+ * agent isn't blamed for them. Resumed sessions keep their original base.
+ */
 function onSessionStart(cwd: string, sessionId: string): HookOutput {
   const file = stateFile(cwd, sessionId);
   if (readState(file)) return {};
-  const base = headCommit(cwd);
-  if (base) writeState(file, { base, blocks: 0 });
+  const head = headCommit(cwd);
+  if (!head) return {};
+  let base = head;
+  try {
+    base = snapshot(cwd, head);
+  } catch {
+    // fall back to the last commit: uncommitted changes then count as the session's
+  }
+  writeState(file, { base, blocks: 0 });
   return {};
 }
 

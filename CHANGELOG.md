@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Fixed
+- **Claude Code: your own uncommitted changes are no longer blamed on the agent.** The session's starting point was the last commit, so a test you had already deleted, or an untracked test you were writing, was reported when Claude tried to finish. SessionStart now records the working tree as it was (built in a temporary index; your index, working tree and branches are untouched).
+- `verify`: a file that is in the base but untracked now is treated as one file, not as a deleted file plus a new one.
+
 ## [0.5.1] - 2026-10-26
 
 Upgrading with Claude Code: run `npx proof-of-done install claude-code` again so the launcher records the new version's fingerprint. Action users on `@v0` get this release automatically.

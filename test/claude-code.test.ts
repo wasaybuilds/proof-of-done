@@ -47,6 +47,30 @@ describe("Claude Code hook", () => {
     expect(existsSync(join(repo, ".proof-of-done"))).toBe(false);
   });
 
+  it("doesn't blame the agent for changes that were already uncommitted when the session started", async () => {
+    write("tests/test_x.py", ONE_TEST); // the user's own uncommitted deletion
+    write("tests/test_new.py", "def test_wip():\n    assert True\n"); // and an untracked work-in-progress test
+    await start();
+    expect(await stop()).toEqual({});
+    write("tests/test_x.py", ""); // the agent deletes the remaining test
+    const out = decision(await stop());
+    expect(out?.decision).toBe("block");
+    expect(out?.reason).toContain("tests/test_x.py");
+    expect(out?.reason).not.toContain("test_b");
+    expect(out?.reason).not.toContain("test_new.py");
+  });
+
+  it("leaves the user's index, working tree and branch untouched when recording the session start", async () => {
+    write("tests/test_x.py", ONE_TEST);
+    write("notes.txt", "draft\n");
+    const status = () => execFileSync("git", ["status", "--porcelain"], { cwd: repo, encoding: "utf8" });
+    const head = () => execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" });
+    const [statusBefore, headBefore] = [status(), head()];
+    await start();
+    expect(status()).toBe(statusBefore);
+    expect(head()).toBe(headBefore);
+  });
+
   it("ignores a base the agent writes into the project after committing its change", async () => {
     await start();
     write("tests/test_x.py", ONE_TEST);

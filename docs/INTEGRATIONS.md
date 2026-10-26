@@ -16,7 +16,7 @@ npx proof-of-done uninstall claude-code    # remove them
 
 | Hook | What it does | Output |
 |---|---|---|
-| `SessionStart` | Records the commit the session started from, in `~/.proof-of-done/sessions/` (outside the project, so the agent can't move it; override with `PROOF_OF_DONE_STATE_DIR`). Resumed sessions keep their original base. | Nothing. SessionStart stdout would be added to Claude's context, so it stays silent: zero tokens. |
+| `SessionStart` | Records the state the session started from: the last commit plus anything already uncommitted or untracked, so the agent isn't blamed for your own changes. Stored in `~/.proof-of-done/sessions/` (outside the project, so the agent can't move it; override with `PROOF_OF_DONE_STATE_DIR`). Resumed sessions keep their original base. | Nothing. SessionStart stdout would be added to Claude's context, so it stays silent: zero tokens. |
 | `Stop` | Runs `verify` against the session's base. | On `FAIL`: `{"decision":"block","reason":"Proof of Done: …"}`. Otherwise nothing. |
 
 **Why a launcher.** Proof of Done itself lives in `node_modules`, inside the project, where the agent can edit it: in a live test, an agent patched it to return early and the check silently did nothing. Claude Code treats `.claude/hooks/` as sensitive and won't let the agent edit files there without your permission. So the launcher records a fingerprint (SHA-256 of `dist/` and `package.json`) at install time and refuses to run a package that no longer matches: *"Proof of Done's own files (node_modules/proof-of-done) don't match what was installed (v…), so this session's changes can't be verified."* **After upgrading proof-of-done, run `install claude-code` again** to record the new fingerprint.
@@ -27,7 +27,7 @@ Example block, as Claude receives it:
 { "decision": "block", "reason": "Proof of Done: You deleted test \"subtracts\" in tests/math.test.ts. Restore it and fix the code under test instead." }
 ```
 
-Comparing against the session's starting commit (not `HEAD`) means an agent can't hide a deleted test by committing it.
+Comparing against the session's starting state (not `HEAD`) means an agent can't hide a deleted test by committing it. The starting state is recorded as a commit object built in a temporary index: your index, working tree and branches aren't touched.
 
 **Where the hooks are written**
 - Installed as a project dependency (`npm i -D proof-of-done`): `.claude/settings.json`, and the launcher refers to `node_modules/proof-of-done` relatively. Commit `.claude/` to share with your team.
