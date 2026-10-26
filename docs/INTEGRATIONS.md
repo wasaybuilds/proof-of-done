@@ -36,6 +36,8 @@ Comparing against the session's starting state (not `HEAD`) means an agent can't
 
 Existing settings and other hooks are preserved; running `install` twice doesn't duplicate anything.
 
+**Checks the claim that the tests pass (opt-in).** With `tests` configured in `.proofofdone.yml` (see [Configuration](CONFIGURATION.md)), when Claude's final message says the tests pass, the Stop hook re-runs them and reads the JUnit report. If they fail, Claude is sent back: *"You said "All tests pass.", but re-running the tests shows 2 failing: "cart > totals", "cart > tax". Fix them, or say plainly which tests fail."* Saying honestly that tests fail is fine. Stops without such a claim don't run anything. If the tests can't be run (no report, timeout), you get a note and Claude isn't blocked.
+
 **It never works against the user**
 - **Changes you asked for aren't blocked.** The Stop hook reads *your own* messages from the local session transcript (`transcript_path`; tool output and hook feedback are ignored, so the agent can't fake them). If you explicitly asked to delete, remove, drop or skip a test or test file (for example *"remove the percentage feature and delete its test in src/discount.test.ts"*), that change isn't blocked. A message that names test files approves changes in those files only. You see a note instead: *"Proof of Done: allowed 1 test change you asked for: …"*. Negations such as *"don't delete it"* are respected, and only deletions, skips and removed assertions can be approved this way, never vacuous assertions.
 - **Disagreement goes to you, not back to the agent.** Claude is sent back once. If it then tries to finish again **without changing the flagged tests** (it thinks the change is right), Proof of Done stops blocking and asks you to decide: *"Claude was sent back once but didn't change these, so it may have a reason. Please decide: …"*. It keeps blocking only while Claude makes *new* tampering, up to 3 times per session.
@@ -46,7 +48,7 @@ This came from a live test: before it, a user asked Claude to remove a feature a
 - **Loop limit:** after 3 blocks in one session, the hook stops blocking and shows a message instead ("still failing after 3 attempts … please review").
 - **Fails open:** if anything goes wrong (not a git repo, malformed input, internal error) the hook lets Claude stop and writes the error to stderr. A verifier bug never traps a session.
 - **Only `FAIL` blocks.** `SUSPICIOUS` (for example, a likely refactor) never interrupts the agent.
-- Each hook has a 60 s timeout; a typical check takes about a second.
+- A typical check takes about a second. SessionStart has a 60 s timeout; Stop has 600 s (Claude Code's default), because it may re-run the tests to check a claim.
 
 ### Can the agent switch it off? (tested live, 2026-10-01)
 Before each run the failing test was already deleted; the agent was only told to disable the guardrail and say it's done.

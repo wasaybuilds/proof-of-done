@@ -3,12 +3,15 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { findPassClaim } from "../claim.js";
 import { classifyPath } from "../changeset/classify.js";
 import { gitChangeSet } from "../changeset/git.js";
 import { verify } from "../engine.js";
 import { agentFeedback, humanReport } from "../feedback/format.js";
-import type { Finding } from "../types.js";
-import { readUserPrompts, userAsked } from "./intent.js";
+import { loadConfig } from "../policy/config.js";
+import { runTests } from "../runner/run.js";
+import type { Finding, RuleContext } from "../types.js";
+import { readLastAssistantMessage, readUserPrompts, userAsked } from "./intent.js";
 
 /** Fields we use from Claude Code's hook input. Everything else is ignored. */
 export interface HookInput {
@@ -18,6 +21,8 @@ export interface HookInput {
   stop_hook_active?: boolean;
   /** Session transcript (JSONL). Read locally to see what the user asked for; never sent anywhere. */
   transcript_path?: string;
+  /** Stop: Claude's final message of the turn, checked for a claim that the tests pass. */
+  last_assistant_message?: string;
 }
 
 export interface HookOutput {
@@ -120,6 +125,25 @@ function onSessionStart(cwd: string, sessionId: string): HookOutput {
   return {};
 }
 
+/**
+ * POD013 evidence: when Claude's final message says the tests pass and `.proofofdone.yml` (from the session's base)
+ * configures them, re-run them. A setup problem is reported to the user, never held against Claude.
+ */
+async function claimEvidence(input: HookInput, cwd: string, base: string): Promise<{ evidence: Omit<RuleContext, "files">; problem?: string }> {
+  const claim = findPassClaim(input.last_assistant_message ?? readLastAssistantMessage(input.transcript_path));
+  if (!claim) return { evidence: {} };
+  let tests;
+  try {
+    tests = loadConfig(cwd, base).tests;
+  } catch (err) {
+    return { evidence: {}, problem: `can't check that the tests pass: ${err instanceof Error ? err.message : String(err)}` };
+  }
+  if (!tests) return { evidence: {} };
+  const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  const outcome = await runTests(root, tests);
+  return outcome.ok ? { evidence: { claim, testRun: outcome.run } } : { evidence: {}, problem: `couldn't check Claude's claim that the tests pass: ${outcome.reason}.` };
+}
+
 const describe = (f: Finding): string => `${f.message} (${f.file})`;
 const signature = (findings: Finding[]): string =>
   findings.map((f) => `${f.ruleId}|${f.file}|${f.test ?? ""}`).sort().join("\n");
@@ -140,7 +164,9 @@ async function onStop(input: HookInput, cwd: string, sessionId: string): Promise
     state = { base: head, blocks: 0 };
   }
 
-  const result = await verify(gitChangeSet(cwd, state.base));
+  const { evidence, problem } = await claimEvidence(input, cwd, state.base);
+  const problemNote = problem && `Proof of Done: ${problem}`;
+  const result = await verify(gitChangeSet(cwd, state.base), undefined, evidence);
   const prompts = readUserPrompts(input.transcript_path);
   const asked = result.findings.filter((f) => f.severity === "block" && userAsked(f, prompts, classifyPath(f.file)));
   const blocking = result.findings.filter((f) => f.severity === "block" && !asked.includes(f));
@@ -150,7 +176,8 @@ async function onStop(input: HookInput, cwd: string, sessionId: string): Promise
 
   if (!blocking.length) {
     writeState(file, { ...state, lastBlock: undefined });
-    return askedNote ? { stdout: JSON.stringify({ systemMessage: askedNote }) } : {};
+    const note = [askedNote, problemNote].filter(Boolean).join(" ");
+    return note ? { stdout: JSON.stringify({ systemMessage: note }) } : {};
   }
 
   const sig = signature(blocking);
@@ -162,7 +189,7 @@ async function onStop(input: HookInput, cwd: string, sessionId: string): Promise
     writeState(file, { ...state, lastBlock: undefined });
     return {
       stdout: JSON.stringify({
-        systemMessage: [`Proof of Done: ${why}: ${blocking.map(describe).join("; ")}.`, askedNote].filter(Boolean).join(" "),
+        systemMessage: [`Proof of Done: ${why}: ${blocking.map(describe).join("; ")}.`, askedNote, problemNote].filter(Boolean).join(" "),
       }),
       stderr: humanReport(result),
     };
@@ -173,6 +200,7 @@ async function onStop(input: HookInput, cwd: string, sessionId: string): Promise
     stdout: JSON.stringify({
       decision: "block",
       reason: `Proof of Done: ${agentFeedback(blocking)} If the user explicitly asked for this change, don't revert it: say so in your reply and stop.`,
+      ...(problemNote && { systemMessage: problemNote }),
     }),
   };
 }

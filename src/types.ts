@@ -64,8 +64,27 @@ export interface Finding {
   needsJudgement?: boolean;
 }
 
+/** A test case that failed or errored in a JUnit report. */
+export interface FailedTest {
+  name: string;
+  /** Source file, or the class/module name when the report has no file. */
+  file?: string;
+}
+
+/** Results of re-running the project's tests, read from the JUnit XML report (never console output). */
+export interface TestRun {
+  command: string;
+  total: number;
+  skipped: number;
+  failed: FailedTest[];
+}
+
 export interface RuleContext {
   files: AnalyzedFile[];
+  /** The agent's claim that tests pass, quoted from its final message. */
+  claim?: string;
+  /** Present when the tests were re-run to check the claim. */
+  testRun?: TestRun;
 }
 
 export interface Rule {

@@ -36,6 +36,12 @@ try {
   write("tests/test_x.py", "def test_a():\n    assert f() == 1\n\ndef test_b():\n    assert g() == 2\n");
   write("src/a.test.tsx", 'it("renders", () => { expect(render(<A />)).toBe(1); });\n');
   write(".gitignore", "node_modules/\n");
+  // a stand-in test runner with one failing test, configured for POD013
+  write(
+    "run-tests.mjs",
+    `import { writeFileSync } from "node:fs";\nwriteFileSync(process.argv[2], '<testsuite><testcase name="ok"/><testcase name="broken"><failure/></testcase></testsuite>');\n`,
+  );
+  write(".proofofdone.yml", "tests:\n  command: node run-tests.mjs {junit}\n");
   git("add", "-A");
   git("commit", "-q", "-m", "init");
   write("tests/test_x.py", "def test_a():\n    assert True\n");
@@ -54,6 +60,17 @@ try {
   const expected = ["POD001", "POD004", "POD005"];
   if (JSON.stringify(rules) !== JSON.stringify(expected)) throw new Error(`expected ${expected}, got ${rules}`);
   console.log(`smoke test passed: ${rules.join(", ")} detected from the installed package`);
+
+  // POD013: the claim is checked by re-running the configured tests and reading their JUnit report
+  let claimed = "";
+  try {
+    run(process.execPath, [bin, "verify", "--json", "--claim", "Done. All tests pass."], project);
+  } catch (err) {
+    claimed = err.stdout;
+  }
+  const mismatch = JSON.parse(claimed || "{}").findings?.find((f) => f.ruleId === "POD013");
+  if (!mismatch?.message.includes('"broken"')) throw new Error(`expected POD013 for the failing test, got ${claimed}`);
+  console.log("smoke test passed: POD013 re-ran the tests and caught the false claim");
 
   // Claude Code integration: install the hooks, run the protected launcher like Claude Code would.
   run(process.execPath, [bin, "install", "claude-code"], project);

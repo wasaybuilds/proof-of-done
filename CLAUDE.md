@@ -5,11 +5,11 @@ Guidance for Claude Code (and other coding agents) working in this repository.
 ## Project
 Proof of Done is a CLI that independently verifies a coding agent's "done / tests pass" claim: it re-runs tests in an isolated worktree, detects test tampering by diffing before vs. after, checks scope, and emits a signed receipt. Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before making structural changes.
 
-**Status:** pre-alpha, Phase 1 in progress ([docs/ROADMAP.md](docs/ROADMAP.md)). Implemented: git ChangeSet, tree-sitter test extraction (JS/TS/TSX, Python), rules POD001–POD003, `verify` CLI.
+**Status:** pre-alpha, Phase 1 in progress ([docs/ROADMAP.md](docs/ROADMAP.md)). Implemented: git ChangeSet, tree-sitter test extraction (JS/TS/TSX, Python), rules POD001–POD005, POD008, POD013, `verify` CLI, Claude Code hooks, GitHub Action, `.proofofdone.yml` `tests` section.
 
 ## Stack
 - TypeScript (strict), Node ≥ 20, ESM
-- tree-sitter for parsing: `@vscode/tree-sitter-wasm` is a **dev** dependency; the build ships only the runtime + TS/TSX/JS/Python grammars in `dist/wasm/` (keep install < 8 MB), `commander` CLI, `zod` config, `node:child_process` for git, `@noble/ed25519` signing
+- tree-sitter for parsing: `@vscode/tree-sitter-wasm` is a **dev** dependency; the build ships only the runtime + TS/TSX/JS/Python grammars in `dist/wasm/` (keep install < 8 MB), `commander` CLI, `yaml` config (validated by hand), `node:child_process` for git; planned: `@noble/ed25519` signing
 - `vitest` for tests
 
 ## Commands
@@ -27,8 +27,11 @@ CI (`.github/workflows/ci.yml`) runs all four on Node 20 and 22 for every PR. Al
 ```
 src/engine.ts      # analyze → run rules → verdict (no git, no I/O)
 src/cli  src/changeset  src/parse/<lang>  src/rules  src/feedback
+src/policy         # .proofofdone.yml, read from the base commit
+src/runner         # re-run tests, parse JUnit XML (POD013)
+src/claim.ts       # find "tests pass" claims in the agent's message
 src/adapters       # claude-code.ts (hook handler), install.ts (install/uninstall), launcher.ts (tamper-checking launcher for .claude/hooks), intent.ts (what the user asked for)
-# planned: src/policy  src/scope  src/runner  src/judge  src/receipt
+# planned: src/scope  src/judge  src/receipt
 fixtures/<RULE-ID|negative>/<case>/{before,after}/  expected.json  README.md
 test/
 docs/

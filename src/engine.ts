@@ -1,6 +1,6 @@
 import { extractTests, languageForPath } from "./parse/index.js";
 import { rules as defaultRules } from "./rules/index.js";
-import type { AnalyzedFile, FileChange, Finding, Rule, Verdict, VerifyResult } from "./types.js";
+import type { AnalyzedFile, FileChange, Finding, Rule, RuleContext, Verdict, VerifyResult } from "./types.js";
 
 export async function analyze(changes: FileChange[]): Promise<AnalyzedFile[]> {
   return Promise.all(
@@ -26,8 +26,13 @@ export function verdictOf(findings: Finding[]): Verdict {
   return findings.length ? "SUSPICIOUS" : "PASS";
 }
 
-export async function verify(changes: FileChange[], rules: readonly Rule[] = defaultRules): Promise<VerifyResult> {
+/** `evidence`: the agent's claim and the re-run that checks it, when there is one (POD013). */
+export async function verify(
+  changes: FileChange[],
+  rules: readonly Rule[] = defaultRules,
+  evidence: Omit<RuleContext, "files"> = {},
+): Promise<VerifyResult> {
   const files = await analyze(changes);
-  const findings = rules.flatMap((rule) => rule.check({ files }));
+  const findings = rules.flatMap((rule) => rule.check({ files, ...evidence }));
   return { verdict: verdictOf(findings), findings, filesChecked: files.length };
 }

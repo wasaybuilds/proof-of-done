@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Added
+- **POD013 claim-mismatch** (block): when the agent says the tests pass, Proof of Done re-runs them and reports any failures. Opt-in with a `tests` section in `.proofofdone.yml`, read from the base commit. Results come from the JUnit XML report only, never console output or the exit code; `{junit}` in the command is a fresh path outside the project. Claim detection is deliberately conservative (no code blocks, quotes, negations, conditions or partial claims). Tests the agent honestly says fail are not a finding; runs that can't be checked are reported to the user, not held against the agent. A timed-out run is stopped with everything it started.
+  - Claude Code: the Stop hook reads `last_assistant_message` (falling back to the transcript). Its timeout is now 600 s, Claude Code's default; re-run `install claude-code`.
+  - CLI: `verify --claim "<final message>"`, for other agents and scripts.
+- `.proofofdone.yml` support, starting with the `tests` section ([Configuration](docs/CONFIGURATION.md)).
+
 ### Fixed
 - **Claude Code: your own uncommitted changes are no longer blamed on the agent.** The session's starting point was the last commit, so a test you had already deleted, or an untracked test you were writing, was reported when Claude tried to finish. SessionStart now records the working tree as it was (built in a temporary index; your index, working tree and branches are untouched).
 - `verify`: a file that is in the base but untracked now is treated as one file, not as a deleted file plus a new one.

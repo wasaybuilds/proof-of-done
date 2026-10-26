@@ -24,10 +24,11 @@ Proof of Done looks at **what changed**, not at what the agent reported.
 | **POD004** assertion-weakened | A specific check replaced by a weaker one: `toBe(120)` → `toBeDefined()`, `assertEqual` → `assertTrue`, `== 3` → `> 0` (warning) | JS / TS / TSX, Python |
 | **POD005** vacuous-assertion | Assertions that can't fail: `expect(true).toBe(true)`, `assert True`, `x == x`, asserts swallowed by `try/catch` | JS / TS / TSX, Python |
 | **POD008** guardrail-modified | CI workflows or Proof of Done's config edited, its hooks removed, or its launcher changed | any |
+| **POD013** claim-mismatch | The agent says the tests pass, but re-running them shows failures (opt-in: [configure the test command](docs/CONFIGURATION.md)) | any runner with a JUnit XML report |
 
 It's built not to punish normal refactoring: renamed and moved tests are recognised, and when a change adds at least as many assertions as it removes, findings are warnings rather than failures. See [how refactors are handled](docs/DETECTION-RULES.md#refactor-vs-cheat-applies-to-pod001-and-pod003).
 
-Everything is deterministic code (git + syntax trees). **No LLM is called**, so a check costs nothing and takes about a second.
+Everything is deterministic code (git, syntax trees, JUnit reports). **No LLM is called**, so a check costs nothing and the static checks take about a second.
 
 Real output, after deleting a test and an assertion:
 
@@ -65,6 +66,8 @@ Findings show up as annotations on the pull request, and intended changes are ap
 {"decision":"block","reason":"Proof of Done: You deleted test \"subtracts\" in tests/math.test.ts. Restore it and fix the code under test instead."}
 ```
 
+With a [test command configured](docs/CONFIGURATION.md), it also re-runs the tests whenever Claude says they pass, and sends Claude back if they don't.
+
 It's hard to switch off: a protected launcher refuses to run a modified copy of Proof of Done. It never works against you: changes you explicitly asked for ("delete that test") aren't blocked, and if Claude disagrees after being sent back once, the decision goes to you. It never blocks on a mere warning, and lets Claude stop if anything goes wrong. Details: [Integrations](docs/INTEGRATIONS.md#claude-code-available).
 
 ## Quick start
@@ -96,7 +99,7 @@ node dist/cli/index.js verify
 
 ## Where it's going
 
-- **Re-run the tests** in a clean, isolated checkout and compare with what the agent claimed
+- **Re-run the tests in an isolated checkout**, and run the original tests against the new code (POD010)
 - **More rules**, prioritised by real incidents: hardcoded answers, CI and test-config edits, early exits, test-result hooks ([full list](docs/DETECTION-RULES.md))
 - **More adapters**: git pre-push, Cursor and Codex
 - **Signed receipts** that other tools (CI, reviewers, agent marketplaces) can trust

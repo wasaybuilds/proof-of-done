@@ -54,6 +54,40 @@ export function readUserPrompts(transcriptPath: string | undefined): string[] {
   return prompts;
 }
 
+/**
+ * Claude's last text message in a session transcript. Only a fallback: Claude Code passes it to Stop hooks as
+ * `last_assistant_message`, and the transcript is written asynchronously, so it can lag behind.
+ */
+export function readLastAssistantMessage(transcriptPath: string | undefined): string | undefined {
+  if (!transcriptPath) return undefined;
+  let text: string;
+  try {
+    text = readFileSync(transcriptPath, "utf8");
+  } catch {
+    return undefined;
+  }
+  let last: string | undefined;
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue;
+    let entry: { type?: string; message?: { role?: string; content?: unknown } };
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (entry.type !== "assistant" || entry.message?.role !== "assistant") continue;
+    const content = entry.message.content;
+    const message =
+      typeof content === "string"
+        ? content
+        : Array.isArray(content)
+          ? content.filter((c) => c?.type === "text").map((c) => String(c.text ?? "")).join("\n")
+          : "";
+    if (message.trim()) last = message;
+  }
+  return last;
+}
+
 const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Words that identify the target of a finding: file name, file stem, distinctive words of the test name. */

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="28" failures="5" errors="0" time="1.84">
+    <testsuite name="src/cart.test.tsx" timestamp="2026-10-26T00:00:00.000Z" hostname="dev" tests="10" failures="3" errors="0" skipped="0" time="0.40">
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 1" time="0.012">
+            <failure message="expected 90 to be 81" type="AssertionError">
+AssertionError: expected 90 to be 81
+ ❯ src/cart.test.tsx:12:20
+            </failure>
+        </testcase>
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 2" time="0.012">
+            <failure message="expected 90 to be 81" type="AssertionError">
+AssertionError: expected 90 to be 81
+ ❯ src/cart.test.tsx:12:20
+            </failure>
+        </testcase>
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 3" time="0.012">
+            <failure message="expected 90 to be 81" type="AssertionError">
+AssertionError: expected 90 to be 81
+ ❯ src/cart.test.tsx:12:20
+            </failure>
+        </testcase>
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 4" time="0.012">
+        </testcase>
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 5" time="0.012">
+        </testcase>
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 6" time="0.012">
+        </testcase>
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 7" time="0.012">
+        </testcase>
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 8" time="0.012">
+        </testcase>
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 9" time="0.012">
+        </testcase>
+        <testcase classname="src/cart.test.tsx" name="Cart &gt; case 10" time="0.012">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/checkout.test.tsx" timestamp="2026-10-26T00:00:00.000Z" hostname="dev" tests="10" failures="2" errors="0" skipped="0" time="0.40">
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 1" time="0.012">
+            <failure message="expected 'pending' to be 'paid'" type="AssertionError">
+AssertionError: expected 'pending' to be 'paid'
+ ❯ src/checkout.test.tsx:12:20
+            </failure>
+        </testcase>
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 2" time="0.012">
+            <failure message="expected 'pending' to be 'paid'" type="AssertionError">
+AssertionError: expected 'pending' to be 'paid'
+ ❯ src/checkout.test.tsx:12:20
+            </failure>
+        </testcase>
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 3" time="0.012">
+        </testcase>
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 4" time="0.012">
+        </testcase>
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 5" time="0.012">
+        </testcase>
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 6" time="0.012">
+        </testcase>
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 7" time="0.012">
+        </testcase>
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 8" time="0.012">
+        </testcase>
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 9" time="0.012">
+        </testcase>
+        <testcase classname="src/checkout.test.tsx" name="Checkout &gt; step 10" time="0.012">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/discount.test.ts" timestamp="2026-10-26T00:00:00.000Z" hostname="dev" tests="8" failures="0" errors="0" skipped="0" time="0.40">
+        <testcase classname="src/discount.test.ts" name="discount &gt; rule 1" time="0.012">
+        </testcase>
+        <testcase classname="src/discount.test.ts" name="discount &gt; rule 2" time="0.012">
+        </testcase>
+        <testcase classname="src/discount.test.ts" name="discount &gt; rule 3" time="0.012">
+        </testcase>
+        <testcase classname="src/discount.test.ts" name="discount &gt; rule 4" time="0.012">
+        </testcase>
+        <testcase classname="src/discount.test.ts" name="discount &gt; rule 5" time="0.012">
+        </testcase>
+        <testcase classname="src/discount.test.ts" name="discount &gt; rule 6" time="0.012">
+        </testcase>
+        <testcase classname="src/discount.test.ts" name="discount &gt; rule 7" time="0.012">
+        </testcase>
+        <testcase classname="src/discount.test.ts" name="discount &gt; rule 8" time="0.012">
+        </testcase>
+    </testsuite>
+</testsuites>

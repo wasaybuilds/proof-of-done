@@ -127,6 +127,74 @@ describe("Claude Code hook", () => {
     expect(last?.systemMessage).toContain("not blocking again");
   });
 
+  describe("checks a claim that the tests pass (POD013)", () => {
+    // A stand-in test runner that writes a JUnit report with one failing test, unless told to pass.
+    const runner = `import { writeFileSync } from "node:fs";
+const [out, outcome] = process.argv.slice(2);
+if (outcome !== "no-report") writeFileSync(out, '<testsuite><testcase classname="tests.test_x" name="test_a"/><testcase classname="tests.test_x" name="test_b">' + (outcome === "fail" ? "<failure/>" : "") + "</testcase></testsuite>");
+`;
+    const configure = (outcome: string) => {
+      write("run-tests.mjs", runner);
+      write(".proofofdone.yml", `tests:\n  command: node run-tests.mjs {junit} ${outcome}\n`);
+      git("add", "-A");
+      git("commit", "-q", "-m", "configure tests");
+    };
+    const stopSaying = (message: string, active = false) =>
+      handleClaudeCodeHook({ hook_event_name: "Stop", session_id: "s1", cwd: repo, stop_hook_active: active, last_assistant_message: message });
+
+    it("blocks when Claude says the tests pass but they fail when re-run", async () => {
+      configure("fail");
+      await start();
+      const out = decision(await stopSaying("Fixed the bug. All tests pass."));
+      expect(out?.decision).toBe("block");
+      expect(out?.reason).toContain('You said "All tests pass."');
+      expect(out?.reason).toContain('"test_b"');
+    });
+
+    it("lets Claude stop when it reports the failure honestly", async () => {
+      configure("fail");
+      await start();
+      expect(await stopSaying("I fixed most of it, but test_b still fails.")).toEqual({});
+    });
+
+    it("lets Claude stop when the re-run confirms the claim", async () => {
+      configure("pass");
+      await start();
+      expect(await stopSaying("All tests pass.")).toEqual({});
+    });
+
+    it("reads the claim from the transcript when Claude Code doesn't pass the final message", async () => {
+      configure("fail");
+      await start();
+      const transcript = join(repo, ".transcript.jsonl");
+      writeFileSync(transcript, JSON.stringify({ type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Done, the test suite passes." }] } }) + "\n");
+      const out = decision(await handleClaudeCodeHook({ hook_event_name: "Stop", session_id: "s1", cwd: repo, transcript_path: transcript }));
+      expect(out?.decision).toBe("block");
+    });
+
+    it("uses the config from the session's start, so Claude can't switch the check off mid-session", async () => {
+      configure("fail");
+      await start();
+      write(".proofofdone.yml", "version: 0\n"); // the agent removes the tests section
+      const out = decision(await stopSaying("All tests pass."));
+      expect(out?.decision).toBe("block");
+      expect(out?.reason).toContain('You said "All tests pass."');
+    });
+
+    it("doesn't run anything when no tests are configured", async () => {
+      await start();
+      expect(await stopSaying("All tests pass.")).toEqual({});
+    });
+
+    it("tells the user, without blocking, when the tests can't be checked", async () => {
+      configure("no-report");
+      await start();
+      const out = decision(await stopSaying("All tests pass."));
+      expect(out?.decision).toBeUndefined();
+      expect(out?.systemMessage).toContain("couldn't check Claude's claim that the tests pass: the test command wrote no JUnit report");
+    });
+  });
+
   describe("respects what the user asked for", () => {
     const transcript = (prompt: string) => {
       const file = join(repo, ".transcript.jsonl");
@@ -200,8 +268,9 @@ describe("install / uninstall", () => {
     expect(installed.scope).toBe("project");
     expect(installed.settings).toBe(settingsPath(repo, "project"));
     const settings = JSON.parse(readFileSync(installed.settings, "utf8"));
-    for (const event of ["SessionStart", "Stop"]) {
-      expect(settings.hooks[event]).toEqual([{ hooks: [{ type: "command", command: LAUNCHER_COMMAND, timeout: 60 }] }]);
+    // Stop gets Claude Code's default 600 s: it may re-run the tests to check a claim (POD013)
+    for (const [event, timeout] of [["SessionStart", 60], ["Stop", 600]] as const) {
+      expect(settings.hooks[event]).toEqual([{ hooks: [{ type: "command", command: LAUNCHER_COMMAND, timeout }] }]);
     }
     expect(existsSync(join(repo, LAUNCHER_PATH))).toBe(true);
   });

@@ -9,6 +9,8 @@ type HookGroup = { matcher?: string; hooks: HookEntry[] };
 type Settings = { hooks?: Record<string, HookGroup[]>; [key: string]: unknown };
 
 const EVENTS = ["SessionStart", "Stop"] as const;
+/** Stop may re-run the tests to check a claim (up to tests.timeoutSeconds, max 540 s). */
+const TIMEOUTS: Record<(typeof EVENTS)[number], number> = { SessionStart: 60, Stop: 600 };
 /** Identifies our hook entries: the launcher, or the direct command used by 0.2.x and --command. */
 const MARKERS = ["proof-of-done.mjs", "hook claude-code"];
 export const LAUNCHER_PATH = join(".claude", "hooks", "proof-of-done.mjs");
@@ -73,7 +75,7 @@ export function installClaudeCode(repo: string, pkgRoot: string, opts: { scope?:
   const hooks = { ...(settings.hooks ?? {}) };
   const command = opts.command ?? LAUNCHER_COMMAND;
   for (const event of EVENTS) {
-    hooks[event] = [...(hooks[event] ?? []), { hooks: [{ type: "command", command, timeout: 60 }] }];
+    hooks[event] = [...(hooks[event] ?? []), { hooks: [{ type: "command", command, timeout: TIMEOUTS[event] }] }];
   }
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify({ ...settings, hooks }, null, 2) + "\n");

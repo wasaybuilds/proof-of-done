@@ -7,10 +7,15 @@ import { fileURLToPath } from "node:url";
 import { handleClaudeCodeHook, type HookInput } from "../adapters/claude-code.js";
 import { CHECK_NAME, installGithub } from "../adapters/github.js";
 import { installClaudeCode, uninstallClaudeCode, type Scope } from "../adapters/install.js";
+import { execFileSync } from "node:child_process";
 import { gitChangeSet } from "../changeset/git.js";
+import { findPassClaim } from "../claim.js";
 import { verify } from "../engine.js";
 import { humanReport } from "../feedback/format.js";
 import { githubAnnotations, markdownSummary } from "../feedback/github.js";
+import { loadConfig } from "../policy/config.js";
+import { runTests } from "../runner/run.js";
+import type { RuleContext } from "../types.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json") as { version: string };
@@ -19,6 +24,26 @@ async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
   return Buffer.concat(chunks).toString("utf8");
+}
+
+/** POD013 for `verify --claim`: re-run the tests when the message says they pass. Problems are warnings, not findings. */
+async function claimEvidence(message: string | undefined, base: string): Promise<Omit<RuleContext, "files">> {
+  const claim = findPassClaim(message);
+  if (!claim) return {};
+  try {
+    const tests = loadConfig(process.cwd(), base).tests;
+    if (!tests) {
+      console.error("proof-of-done: --claim: no tests configured in .proofofdone.yml at the base, so the claim wasn't checked");
+      return {};
+    }
+    const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const outcome = await runTests(root, tests);
+    if (outcome.ok) return { claim, testRun: outcome.run };
+    console.error(`proof-of-done: --claim: couldn't check the claim: ${outcome.reason}`);
+  } catch (err) {
+    console.error(`proof-of-done: --claim: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return {};
 }
 
 const program = new Command();
@@ -36,7 +61,8 @@ program
   .addOption(new Option("--format <format>", "output format").choices(["human", "json", "github"]).default("human"))
   .option("--exit-zero", "report findings but always exit 0 (e.g. when a maintainer approved the change)")
   .option("--approved-by <label>", "with --format github: note in the summary why the check doesn't fail")
-  .action(async (opts: { base: string; json?: boolean; format: string; exitZero?: boolean; approvedBy?: string }) => {
+  .option("--claim <message>", "the agent's final message: if it says the tests pass, re-run them (tests in .proofofdone.yml) and check (POD013)")
+  .action(async (opts: { base: string; json?: boolean; format: string; exitZero?: boolean; approvedBy?: string; claim?: string }) => {
     let changes;
     try {
       changes = gitChangeSet(process.cwd(), opts.base);
@@ -46,7 +72,7 @@ program
       process.exitCode = 2;
       return;
     }
-    const result = await verify(changes);
+    const result = await verify(changes, undefined, await claimEvidence(opts.claim, opts.base));
     const format = opts.json ? "json" : opts.format;
     if (format === "json") console.log(JSON.stringify(result, null, 2));
     else if (format === "github") {

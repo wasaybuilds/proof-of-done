@@ -3,8 +3,10 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { classifyPath } from "../src/changeset/classify.js";
+import { findPassClaim } from "../src/claim.js";
 import { verify } from "../src/engine.js";
-import type { FileChange } from "../src/types.js";
+import { parseJUnit } from "../src/runner/junit.js";
+import type { FileChange, RuleContext } from "../src/types.js";
 
 const ROOT = fileURLToPath(new URL("../fixtures", import.meta.url));
 
@@ -43,6 +45,20 @@ function changesFor(caseDir: string): FileChange[] {
   return changes;
 }
 
+/**
+ * POD013 evidence: `message.md` is the agent's final message (run through the claim detector) and
+ * `junit.xml` the report of re-running the tests.
+ */
+function evidenceFor(caseDir: string): Omit<RuleContext, "files"> {
+  const message = join(caseDir, "message.md");
+  const junit = join(caseDir, "junit.xml");
+  const claim = existsSync(message) ? findPassClaim(readFileSync(message, "utf8")) : undefined;
+  return {
+    ...(claim && { claim }),
+    ...(existsSync(junit) && { testRun: { command: "npm test", ...parseJUnit(readFileSync(junit, "utf8")) } }),
+  };
+}
+
 const cases = readdirSync(ROOT).flatMap((group) =>
   readdirSync(join(ROOT, group)).map((name) => ({ id: `${group}/${name}`, dir: join(ROOT, group, name) })),
 );
@@ -51,12 +67,12 @@ describe("fixtures", () => {
   it("has at least one positive and one negative fixture per implemented rule", () => {
     const groups = new Set(cases.map((c) => c.id.split("/")[0]));
     expect(groups).toContain("negative");
-    for (const rule of ["POD001", "POD002", "POD003", "POD004", "POD005", "POD008"]) expect(groups).toContain(rule);
+    for (const rule of ["POD001", "POD002", "POD003", "POD004", "POD005", "POD008", "POD013"]) expect(groups).toContain(rule);
   });
 
   it.each(cases)("$id", async ({ dir }) => {
     const expected = JSON.parse(readFileSync(join(dir, "expected.json"), "utf8")) as { verdict: string; rules: string[] };
-    const result = await verify(changesFor(dir));
+    const result = await verify(changesFor(dir), undefined, evidenceFor(dir));
     expect(result.verdict).toBe(expected.verdict);
     expect([...new Set(result.findings.map((f) => f.ruleId))].sort()).toEqual([...expected.rules].sort());
   });
