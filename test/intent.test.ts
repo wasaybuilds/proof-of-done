@@ -22,6 +22,7 @@ describe("userAsked", () => {
     "remove the percentage code test",
     "Please get rid of discount.test.ts",
     "skip the flaky test for now",
+    "delete the old test in cart.test.ts and the flaky test in discount.test.ts",
   ])("approves: %s", (prompt) => {
     expect(userAsked(deleted, [prompt])).toBe(true);
   });
@@ -33,6 +34,10 @@ describe("userAsked", () => {
     "Remove the console.log and fix the failing test.",
     "Never delete the percentage test.",
     "The percentage test is failing, can you look?",
+    // naming another test file scopes the request to that file
+    "Please delete the flaky test in cart.test.ts",
+    "remove the percentage test in src/cart.test.ts",
+    "skip that test in tests/test_cart.py",
   ])("does not approve: %s", (prompt) => {
     expect(userAsked(deleted, [prompt])).toBe(false);
   });

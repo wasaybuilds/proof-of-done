@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { handleClaudeCodeHook, MAX_BLOCKS_PER_SESSION } from "../src/adapters/claude-code.js";
+import { handleClaudeCodeHook, MAX_BLOCKS_PER_SESSION, stateDir } from "../src/adapters/claude-code.js";
 import { installClaudeCode, LAUNCHER_COMMAND, LAUNCHER_PATH, packageRef, settingsPath, uninstallClaudeCode } from "../src/adapters/install.js";
 
 let repo: string;
@@ -21,20 +21,39 @@ const start = () => handleClaudeCodeHook({ hook_event_name: "SessionStart", sess
 const stop = (active = false) => handleClaudeCodeHook({ hook_event_name: "Stop", session_id: "s1", cwd: repo, stop_hook_active: active });
 const decision = (out: { stdout?: string }) => (out.stdout ? (JSON.parse(out.stdout) as Record<string, string>) : undefined);
 
+let state: string;
+
 beforeEach(() => {
   repo = mkdtempSync(join(tmpdir(), "pod-cc-"));
+  state = mkdtempSync(join(tmpdir(), "pod-state-"));
+  process.env.PROOF_OF_DONE_STATE_DIR = state;
   git("init", "-q");
   write("tests/test_x.py", TWO_TESTS);
   git("add", "-A");
   git("commit", "-q", "-m", "init");
 });
 
-afterEach(() => rmSync(repo, { recursive: true, force: true }));
+afterEach(() => {
+  delete process.env.PROOF_OF_DONE_STATE_DIR;
+  rmSync(repo, { recursive: true, force: true });
+  rmSync(state, { recursive: true, force: true });
+});
 
 describe("Claude Code hook", () => {
-  it("SessionStart prints nothing (stdout would cost context tokens) and records the base", async () => {
+  it("SessionStart prints nothing (stdout would cost context tokens) and records the base outside the project", async () => {
     expect(await start()).toEqual({});
-    expect(existsSync(join(repo, ".proof-of-done", "sessions", "s1.json"))).toBe(true);
+    expect(existsSync(join(stateDir(repo), "s1.json"))).toBe(true);
+    expect(stateDir(repo).startsWith(state)).toBe(true);
+    expect(existsSync(join(repo, ".proof-of-done"))).toBe(false);
+  });
+
+  it("ignores a base the agent writes into the project after committing its change", async () => {
+    await start();
+    write("tests/test_x.py", ONE_TEST);
+    git("commit", "-qam", "agent commits its cheat");
+    const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
+    write(".proof-of-done/sessions/s1.json", JSON.stringify({ base: head, blocks: 0 })); // where 0.5.0 kept it
+    expect(decision(await stop())?.decision).toBe("block");
   });
 
   it("lets the agent stop when nothing was tampered with", async () => {
@@ -152,7 +171,7 @@ describe("install / uninstall", () => {
       env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
     }).trim();
 
-  it("writes the launcher and SessionStart/Stop hooks, and gitignores session state", () => {
+  it("writes the launcher and SessionStart/Stop hooks", () => {
     const installed = installClaudeCode(repo, fakePackage());
     expect(installed.scope).toBe("project");
     expect(installed.settings).toBe(settingsPath(repo, "project"));
@@ -161,7 +180,6 @@ describe("install / uninstall", () => {
       expect(settings.hooks[event]).toEqual([{ hooks: [{ type: "command", command: LAUNCHER_COMMAND, timeout: 60 }] }]);
     }
     expect(existsSync(join(repo, LAUNCHER_PATH))).toBe(true);
-    expect(readFileSync(join(repo, ".gitignore"), "utf8")).toContain(".proof-of-done/");
   });
 
   it("launcher runs the package when it is untouched", () => {

@@ -54,9 +54,15 @@ runs:
         PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
       run: |
         pkg="${PACKAGE:-proof-of-done@$(node -p "require(process.env.GITHUB_ACTION_PATH + '/package.json').version")}"
+        # Install outside the checkout and run by path. `npx` in the checkout would prefer a node_modules/proof-of-done
+        # committed in the pull request, and npm would read the pull request's .npmrc, so the PR could pick its own checker.
+        tool="$RUNNER_TEMP/proof-of-done"
+        mkdir -p "$tool"
+        echo '{"private":true}' > "$tool/package.json"
+        (cd "$tool" && npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund --loglevel=error "$pkg")
         args=(verify --base "$BASE" --format github)
         if [ -n "$ALLOW_LABEL" ] && node -e 'const l = JSON.parse(process.env.PR_LABELS || "null") || []; process.exit(l.includes(process.env.ALLOW_LABEL) ? 0 : 1)'; then
           echo "::notice title=Proof of Done::Findings won't fail this check: the pull request has the '$ALLOW_LABEL' label."
           args+=(--exit-zero --approved-by "$ALLOW_LABEL")
         fi
-        npx --yes "$pkg" "${args[@]}"
+        node "$tool/node_modules/proof-of-done/dist/cli/index.js" "${args[@]}"

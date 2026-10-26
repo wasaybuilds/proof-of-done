@@ -18,6 +18,8 @@ const NEGATION = /\b(don'?t|do not|never|without|not|no need to|stop)\s+(\w+\s+)
 const CLAUSE_END = /\s(and|then|but|so|because|while)\s|[,;:]/;
 const GENERIC_TARGET = /\b(failing|broken|flaky|that|this|those|these|its|their|the|old|obsolete)\s+(\w+\s+)?tests?\b/;
 const STOPWORDS = new Set(["should", "returns", "return", "handles", "works", "when", "given", "correctly", "properly", "with", "without"]);
+// Test files named in a prompt: "cart.test.ts", "src/cart.spec.tsx", "tests/test_billing.py", "billing_test.py".
+const TEST_FILE = /[\w.-]+\.(test|spec)\.[cm]?[jt]sx?\b|\btest_\w+\.py\b|\b\w+_test\.py\b/g;
 
 /**
  * The user's own messages in a Claude Code session transcript (JSONL).
@@ -69,15 +71,20 @@ function targetsOf(finding: Finding): string[] {
  * Did the user explicitly ask for this change? True when one of their messages has an
  * un-negated removal verb ("delete", "remove", "skip", …) whose object refers to the finding's
  * file or test ("delete its test in src/discount.test.ts", "remove the percentage test").
+ * A message that names test files only approves changes in those files: "delete the flaky test
+ * in cart.test.ts" doesn't approve deleting a test anywhere else.
  */
 export function userAsked(finding: Finding, prompts: string[], kind?: string): boolean {
   if (!APPROVABLE.has(finding.ruleId) || !prompts.length) return false;
   const config = finding.ruleId === "POD008";
   // For CI/guardrail files only the file name and config words count: "delete that failing test" must never approve a CI edit.
-  const targets = config ? [basename(finding.file).toLowerCase(), ...(CONFIG_WORDS[kind ?? ""] ?? [])] : targetsOf(finding);
+  const file = basename(finding.file).toLowerCase();
+  const targets = config ? [file, ...(CONFIG_WORDS[kind ?? ""] ?? [])] : targetsOf(finding);
   const verbs = config ? CONFIG_VERB : VERB;
   for (const prompt of prompts) {
     const text = prompt.toLowerCase().replace(/\s+/g, " ");
+    const named = [...text.matchAll(TEST_FILE)].map((m) => m[0]);
+    if (!config && named.length && !named.includes(file)) continue;
     for (const m of text.matchAll(verbs)) {
       const before = text.slice(0, m.index);
       if (NEGATION.test(before)) continue;

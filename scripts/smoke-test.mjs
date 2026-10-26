@@ -64,7 +64,7 @@ try {
         cwd: project,
         input: JSON.stringify({ hook_event_name: "Stop", session_id: "smoke", cwd: project }),
         encoding: "utf8",
-        env: { ...process.env, CLAUDE_PROJECT_DIR: project },
+        env: { ...process.env, CLAUDE_PROJECT_DIR: project, PROOF_OF_DONE_STATE_DIR: join(dir, "state") },
       }),
     );
   const blocked = stop();
