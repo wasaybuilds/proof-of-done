@@ -4,8 +4,18 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-26
+
+Upgrading with Claude Code: run `npx proof-of-done install claude-code` again so the launcher records the new version's fingerprint. Action users on `@v0` get this release automatically.
+
 ### Security
 - **GitHub Action: a pull request could run its own checker.** The action ran `npx proof-of-done@<version>` inside the checkout, and npx prefers a local `node_modules/proof-of-done` with a matching version, so a pull request that committed one got a fake `PASS`. A committed `.npmrc` could also redirect the download. The action now installs Proof of Done in the runner's temp directory (scripts disabled) and runs it by path. A CI job plants a fake checker and an `.npmrc` and checks the real one still fails the change.
+- **Claude Code: one generic request approved every test change in the session.** A message like "delete the flaky test" approved every deleted, skipped or trimmed test, in any file. A message that names test files (`"delete the flaky test in cart.test.ts"`) now approves changes in those files only.
+- **Claude Code: session state moved out of the project**, from `.proof-of-done/sessions/` to `~/.proof-of-done/sessions/` (override with `PROOF_OF_DONE_STATE_DIR`). Inside the project, an agent could commit its changes and then point the recorded session start at that commit. `install claude-code` no longer adds `.proof-of-done/` to `.gitignore`; an existing `.proof-of-done/` folder can be deleted.
+
+### Fixed
+- `with pytest.raises(...)` counts as an assertion: removing it is reported (POD003), and loosening it to `pytest.raises(Exception)` without `match=` is reported as weakening (POD004).
+- A test passed by reference (`it("formats", checkFormat)`) was reported as skipped (POD002). It now runs, and a helper declared in the same file contributes its assertions.
 
 ## [0.5.0] - 2026-10-07
 
@@ -74,7 +84,8 @@ First release.
 - Refactor handling: renamed and moved tests are recognised; when a change adds at least as many assertions as it removes, POD001/POD003 findings are warnings instead of failures.
 - Short, capped feedback for the agent with every finding.
 
-[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/wasaybuilds/proof-of-done/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.3.0...v0.4.0
