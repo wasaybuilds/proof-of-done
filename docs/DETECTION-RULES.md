@@ -51,6 +51,7 @@ A test case or whole test file existing at `base` is missing at `head` (and not 
 ### POD002 — test-skipped
 A previously active test is now disabled.
 - JS/TS: `it.skip`, `test.skip`, `describe.skip`, `xit`, `xdescribe`, `it.todo` replacing a real test, `it.only` elsewhere in the file (silently skips siblings).
+- A test passed by reference (`it("formats", checkFormat)`) still runs and is not reported; the assertions of a helper declared in the same file are counted.
 - Python: `@pytest.mark.skip`, `@pytest.mark.skipif(True, …)`, `@unittest.skip`, `pytest.skip()` inside the body, `@pytest.mark.xfail` added to a passing-required test.
 
 ### POD003 — assertion-removed
@@ -58,8 +59,8 @@ Net decrease in assertion count inside a matched test (`expect(`, `assert`, `sel
 
 ### Assertion strength (used by POD004, POD005 and the refactor check)
 Every assertion is classified as:
-- **exact** — checks a specific value, error or call: `toBe(3)`, `toEqual({...})`, `toThrow("expired")`, `assert x == 3`, `self.assertEqual`, `assertRaises(ValueError)`
-- **weak** — only checks existence, truthiness, type or a bound: `toBeDefined()`, `toBeTruthy()`, `not.toBeNull()`, `toThrow()`, `toBeGreaterThan(0)`, `assert x`, `assert x is not None`, `assert len(x) > 0`, `isinstance`, `assertTrue`, `assertRaises(Exception)`
+- **exact** — checks a specific value, error or call: `toBe(3)`, `toEqual({...})`, `toThrow("expired")`, `assert x == 3`, `self.assertEqual`, `assertRaises(ValueError)`, `pytest.raises(ValueError)`
+- **weak** — only checks existence, truthiness, type or a bound: `toBeDefined()`, `toBeTruthy()`, `not.toBeNull()`, `toThrow()`, `toBeGreaterThan(0)`, `assert x`, `assert x is not None`, `assert len(x) > 0`, `isinstance`, `assertTrue`, `assertRaises(Exception)`, `pytest.raises(Exception)` without `match=`
 - **vacuous** — cannot fail: constant subjects (`expect(true).toBe(true)`, `assert True`, `1 == 1`), a value compared with itself (`expect(x).toBe(x)`, `assert x == x`), `expect(x)` with no matcher, or an assertion inside a `try` whose `catch`/`except` swallows the failure (doesn't rethrow or assert). `finally` blocks and `except KeyError` don't count as swallowing.
 
 ### POD004 — assertion-weakened
@@ -72,6 +73,7 @@ Inside a test that exists before and after, the number of **exact** assertions d
 | `assert a == b` | `assert a` / `assert a is not None` |
 | `toHaveLength(3)` | `toBeGreaterThan(0)` |
 | `assertRaises(ValueError)` | `assertRaises(Exception)` |
+| `pytest.raises(ValueError, match="…")` | `pytest.raises(Exception)` |
 
 ### POD005 — vacuous-assertion
 A test gains an assertion that cannot fail (a **vacuous** assertion, see above), e.g. a real check replaced by `expect(true).toBe(true)` or wrapped in `try { … } catch {}`. Applies to new and existing tests. Not yet detected: assertions in branches that never run.

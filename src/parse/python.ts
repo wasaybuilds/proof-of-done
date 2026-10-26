@@ -72,6 +72,15 @@ function classifyUnittest(method: string, call: Node): Strength {
   return WEAK_UNITTEST.has(method) ? "weak" : "exact";
 }
 
+/** `pytest.raises(ValueError)` checks a specific error; `pytest.raises(Exception)` accepts any, unless `match=` pins the message. */
+function classifyRaises(call: Node): Strength {
+  const args = children(call.childForFieldName("arguments") ?? call);
+  const first = args[0];
+  if (!first || first.type === "keyword_argument") return "weak";
+  const matches = args.some((a) => a.type === "keyword_argument" && a.childForFieldName("name")?.text === "match");
+  return BROAD_EXCEPTIONS.test(first.text) && !matches ? "weak" : "exact";
+}
+
 /** An except clause swallows assertion failures if it catches them and doesn't re-raise. */
 function pySwallows(tryNode: Node, bodyOf: Node): boolean {
   if (tryNode.childForFieldName("body")?.id !== bodyOf.id) return false;
@@ -94,6 +103,7 @@ function collectAssertions(body: Node): Assertion[] {
     const fn = call.childForFieldName("function");
     const attr = fn?.type === "attribute" ? fn.childForFieldName("attribute")?.text : undefined;
     if (attr && /^assert/.test(attr)) add(call, classifyUnittest(attr, call));
+    else if (fn?.text === "pytest.raises") add(call, classifyRaises(call)); // with pytest.raises(ValueError): ...
   }
   return out.sort((x, y) => x.line - y.line);
 }

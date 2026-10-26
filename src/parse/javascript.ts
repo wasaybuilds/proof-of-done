@@ -60,7 +60,24 @@ interface TestCall {
   body: Node | null;
 }
 
-function asTestCall(call: Node): TestCall | null {
+const isFunction = (n: Node): boolean => n.type === "arrow_function" || n.type === "function_expression" || n.type === "function";
+
+/** Functions declared in the file by name (`function check() {}`, `const check = () => {}`), for `it("x", check)`. */
+function namedFunctions(root: Node): Map<string, Node> {
+  const out = new Map<string, Node>();
+  for (const decl of descendants(root, "function_declaration")) {
+    const name = decl.childForFieldName("name")?.text;
+    if (name) out.set(name, decl);
+  }
+  for (const decl of descendants(root, "variable_declarator")) {
+    const name = decl.childForFieldName("name")?.text;
+    const value = decl.childForFieldName("value");
+    if (name && value && isFunction(value)) out.set(name, value);
+  }
+  return out;
+}
+
+function asTestCall(call: Node, functions: Map<string, Node>): TestCall | null {
   const fn = call.childForFieldName("function");
   const chain = fn ? calleeChain(fn) : null;
   if (!chain) return null;
@@ -72,14 +89,14 @@ function asTestCall(call: Node): TestCall | null {
   const args = children(call.childForFieldName("arguments") ?? call);
   const first = args[0];
   if (!first) return null;
-  const callback = [...args]
-    .reverse()
-    .find((a) => a.type === "arrow_function" || a.type === "function_expression" || a.type === "function");
+  // A test passed by reference (`it("x", check)`) runs; it's only pending when there's no callback at all.
+  const reference = args.slice(1).find((a) => a.type === "identifier" || a.type === "member_expression");
+  const callback = [...args].reverse().find(isFunction) ?? (reference && functions.get(reference.text));
 
   return {
     kind,
     name: stringValue(first),
-    skipped: root.startsWith("x") || mods.some((m) => SKIP_MODS.has(m)) || (kind === "test" && !callback),
+    skipped: root.startsWith("x") || mods.some((m) => SKIP_MODS.has(m)) || (kind === "test" && !callback && !reference),
     focused: root.startsWith("f") || mods.includes("only"),
     body: callback?.childForFieldName("body") ?? null,
   };
@@ -170,10 +187,11 @@ function collectAssertions(body: Node): Assertion[] {
 
 export function extractJsTests(root: Node): TestCase[] {
   const out: TestCase[] = [];
+  const functions = namedFunctions(root);
 
   const visit = (node: Node, scope: string[], skippedScope: boolean, focusedScope: boolean): void => {
     for (const child of children(node)) {
-      const call = child.type === "call_expression" ? asTestCall(child) : null;
+      const call = child.type === "call_expression" ? asTestCall(child, functions) : null;
       if (!call) {
         visit(child, scope, skippedScope, focusedScope);
         continue;

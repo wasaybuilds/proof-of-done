@@ -43,6 +43,20 @@ describe("extractTests — JS/TS", () => {
     ]);
   });
 
+  it("treats a test passed by reference as running, with the assertions of its helper in the same file", async () => {
+    const tests = await extractTests(
+      `function checkTotal() { expect(total()).toBe(3); }\nconst checkEmpty = () => { expect(cart()).toEqual([]); };\n` +
+        `it("total", checkTotal);\nit("empty", checkEmpty);\nit("imported", sharedCheck);\nit("pending");`,
+      "typescript",
+    );
+    expect(tests.map(({ name, skipped, assertions }) => ({ name, skipped, assertions }))).toEqual([
+      { name: "total", skipped: false, assertions: 1 },
+      { name: "empty", skipped: false, assertions: 1 },
+      { name: "imported", skipped: false, assertions: 0 },
+      { name: "pending", skipped: true, assertions: 0 },
+    ]);
+  });
+
   it("parses TSX", async () => {
     const tests = await extractTests(`it("renders", () => { expect(render(<A />)).toBeDefined(); });`, "tsx");
     expect(tests).toHaveLength(1);
@@ -130,6 +144,9 @@ describe("assertion strength", () => {
     ["assert isinstance(x, int)", { exact: 0, weak: 1, vacuous: 0 }],
     ["self.assertTrue(ok)", { exact: 0, weak: 1, vacuous: 0 }],
     ["self.assertRaises(Exception, parse, '')", { exact: 0, weak: 1, vacuous: 0 }],
+    ["with pytest.raises(ValueError):\n    parse('')", { exact: 1, weak: 0, vacuous: 0 }],
+    ["with pytest.raises(Exception, match='empty'):\n    parse('')", { exact: 1, weak: 0, vacuous: 0 }],
+    ["with pytest.raises(Exception):\n    parse('')", { exact: 0, weak: 1, vacuous: 0 }],
     ["assert True", { exact: 0, weak: 0, vacuous: 1 }],
     ["assert x == x", { exact: 0, weak: 0, vacuous: 1 }],
     ["assert 1 == 1", { exact: 0, weak: 0, vacuous: 1 }],
