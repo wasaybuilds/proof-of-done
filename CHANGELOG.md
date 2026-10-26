@@ -4,19 +4,15 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-26
+
+Includes the fixes prepared as 0.5.1, which was never published. Upgrading with Claude Code: run `npx proof-of-done install claude-code` again so the launcher records the new version's fingerprint and the longer Stop timeout. Action users on `@v0` get this release automatically.
+
 ### Added
 - **POD013 claim-mismatch** (block): when the agent says the tests pass, Proof of Done re-runs them and reports any failures. Opt-in with a `tests` section in `.proofofdone.yml`, read from the base commit. Results come from the JUnit XML report only, never console output or the exit code; `{junit}` in the command is a fresh path outside the project. Claim detection is deliberately conservative (no code blocks, quotes, negations, conditions or partial claims). Tests the agent honestly says fail are not a finding; runs that can't be checked are reported to the user, not held against the agent. A timed-out run is stopped with everything it started.
   - Claude Code: the Stop hook reads `last_assistant_message` (falling back to the transcript). Its timeout is now 600 s, Claude Code's default; re-run `install claude-code`.
   - CLI: `verify --claim "<final message>"`, for other agents and scripts.
 - `.proofofdone.yml` support, starting with the `tests` section ([Configuration](docs/CONFIGURATION.md)).
-
-### Fixed
-- **Claude Code: your own uncommitted changes are no longer blamed on the agent.** The session's starting point was the last commit, so a test you had already deleted, or an untracked test you were writing, was reported when Claude tried to finish. SessionStart now records the working tree as it was (built in a temporary index; your index, working tree and branches are untouched).
-- `verify`: a file that is in the base but untracked now is treated as one file, not as a deleted file plus a new one.
-
-## [0.5.1] - 2026-10-26
-
-Upgrading with Claude Code: run `npx proof-of-done install claude-code` again so the launcher records the new version's fingerprint. Action users on `@v0` get this release automatically.
 
 ### Security
 - **GitHub Action: a pull request could run its own checker.** The action ran `npx proof-of-done@<version>` inside the checkout, and npx prefers a local `node_modules/proof-of-done` with a matching version, so a pull request that committed one got a fake `PASS`. A committed `.npmrc` could also redirect the download. The action now installs Proof of Done in the runner's temp directory (scripts disabled) and runs it by path. A CI job plants a fake checker and an `.npmrc` and checks the real one still fails the change.
@@ -24,6 +20,8 @@ Upgrading with Claude Code: run `npx proof-of-done install claude-code` again so
 - **Claude Code: session state moved out of the project**, from `.proof-of-done/sessions/` to `~/.proof-of-done/sessions/` (override with `PROOF_OF_DONE_STATE_DIR`). Inside the project, an agent could commit its changes and then point the recorded session start at that commit. `install claude-code` no longer adds `.proof-of-done/` to `.gitignore`; an existing `.proof-of-done/` folder can be deleted.
 
 ### Fixed
+- **Claude Code: your own uncommitted changes are no longer blamed on the agent.** The session's starting point was the last commit, so a test you had already deleted, or an untracked test you were writing, was reported when Claude tried to finish. SessionStart now records the working tree as it was (built in a temporary index; your index, working tree and branches are untouched).
+- `verify`: a file that is in the base but untracked now is treated as one file, not as a deleted file plus a new one.
 - `with pytest.raises(...)` counts as an assertion: removing it is reported (POD003), and loosening it to `pytest.raises(Exception)` without `match=` is reported as weakening (POD004).
 - A test passed by reference (`it("formats", checkFormat)`) was reported as skipped (POD002). It now runs, and a helper declared in the same file contributes its assertions.
 
@@ -94,8 +92,8 @@ First release.
 - Refactor handling: renamed and moved tests are recognised; when a change adds at least as many assertions as it removes, POD001/POD003 findings are warnings instead of failures.
 - Short, capped feedback for the agent with every finding.
 
-[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.5.1...HEAD
-[0.5.1]: https://github.com/wasaybuilds/proof-of-done/compare/v0.5.0...v0.5.1
+[Unreleased]: https://github.com/wasaybuilds/proof-of-done/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/wasaybuilds/proof-of-done/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/wasaybuilds/proof-of-done/compare/v0.3.0...v0.4.0
