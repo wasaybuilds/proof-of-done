@@ -33,3 +33,51 @@ jobs:
       - run: npm run build
       - name: Package smoke test (install the packed tarball and run it)
         run: node scripts/smoke-test.mjs
+
+  action-isolation:
+    name: Action ignores a checker planted in the pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: action
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: action/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: action
+      - name: A pull request that deletes a test and commits a fake proof-of-done
+        id: repo
+        run: |
+          git init -q
+          git config user.name ci && git config user.email ci@example.com
+          printf 'action/\nnode_modules/\n' > .gitignore
+          printf 'def test_a():\n    assert f() == 1\n\ndef test_b():\n    assert g() == 2\n' > test_x.py
+          git add -A && git commit -qm base
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          printf 'def test_a():\n    assert f() == 1\n' > test_x.py
+          version=$(node -p "require('./action/package.json').version")
+          mkdir -p node_modules/proof-of-done/dist/cli node_modules/.bin
+          echo "{\"name\":\"proof-of-done\",\"version\":\"$version\",\"bin\":{\"proof-of-done\":\"dist/cli/index.js\"}}" > node_modules/proof-of-done/package.json
+          printf '#!/usr/bin/env node\nconsole.log("PASS (fake)")\n' > node_modules/proof-of-done/dist/cli/index.js
+          chmod +x node_modules/proof-of-done/dist/cli/index.js
+          ln -s ../proof-of-done/dist/cli/index.js node_modules/.bin/proof-of-done
+          echo 'registry=http://127.0.0.1:9/' > .npmrc
+          git add -A && git add -f node_modules && git commit -qm "delete test_b, plant a fake checker"
+      - id: pod
+        uses: ./action
+        continue-on-error: true
+        with:
+          base: ${{ steps.repo.outputs.base }}
+          package: ${{ github.workspace }}/action
+      - name: The real checker ran and failed the deletion
+        env:
+          VERDICT: ${{ steps.pod.outputs.verdict }}
+        run: |
+          if [ "$VERDICT" != "FAIL" ]; then
+            echo "::error::expected verdict FAIL from the real checker, got '${VERDICT}'"
+            exit 1
+          fi

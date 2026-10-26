@@ -4,6 +4,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Security
+- **GitHub Action: a pull request could run its own checker.** The action ran `npx proof-of-done@<version>` inside the checkout, and npx prefers a local `node_modules/proof-of-done` with a matching version, so a pull request that committed one got a fake `PASS`. A committed `.npmrc` could also redirect the download. The action now installs Proof of Done in the runner's temp directory (scripts disabled) and runs it by path. A CI job plants a fake checker and an `.npmrc` and checks the real one still fails the change.
+
 ## [0.5.0] - 2026-10-07
 
 ### Added

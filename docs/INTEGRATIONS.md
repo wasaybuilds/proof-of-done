@@ -87,7 +87,7 @@ jobs:
       - uses: wasaybuilds/proof-of-done@v0
 ```
 
-No `fetch-depth` or Node setup needed: the action fetches just the base commit and runs the matching `proof-of-done` version from npm.
+No `fetch-depth` or Node setup needed: the action fetches just the base commit and runs the matching `proof-of-done` version from npm. It installs it outside the checkout, so a pull request can't substitute its own checker by committing a `node_modules/proof-of-done` or an `.npmrc`.
 
 **Intended changes.** In CI there's no chat to read, so approval is explicit: add the **`proof-of-done: allow`** label to the pull request. The check then reports the findings but passes (the `labeled`/`unlabeled` triggers above re-run it when the label changes).
 
