@@ -7,6 +7,10 @@ const TEST_COMMAND =
 // the whole suite as the place: "tests in testcmd pass" (a quoted test command), "tests in the suite pass".
 const SUBJECT_VERB =
   /\b(test suite|test run|tests)( (in|from|across) (the )?(testcmd|suite|test suite|project|repo|codebase))?( (are|is|now|all|still))* (pass(es|ed|ing)?|green|succeed(s|ed)?)\b/g;
+// The test command as the subject: "`npm test` now passes all 3 tests", "pytest is green".
+const COMMAND_PASSES = /\btestcmd (now |all )*(passes|passed|is passing|is green|succeeds|succeeded)\b/;
+// The same commands written without backticks.
+const BARE_TEST_COMMAND = /\b(npm (run )?test|pnpm test|yarn test|bun test|pytest|vitest run|go test|cargo test|mvn test|dotnet test)\b/g;
 // Claims without that subject: "all 28 pass", "12 passed".
 const ALL_N_PASS = /\ball \d+ (are |now )*pass(ed|ing)?\b/;
 const N_PASSED = /\b(\d+) passed\b/;
@@ -47,11 +51,18 @@ function prose(message: string): string {
   return message.replace(/```[\s\S]*?(```|$)/g, "\n").replace(/^\s*>.*$/gm, "");
 }
 
+/** A whole-suite test command: `npm test`, `python -m pytest -q`, `go test ./...`, but not `pytest tests/test_a.py`. */
+function isTestCommand(code: string): boolean {
+  const c = code.trim().toLowerCase();
+  return TEST_COMMAND.test(c) && !c.split(/\s+/).some((arg) => arg !== "./..." && !arg.startsWith("-") && /[./\\:]/.test(arg));
+}
+
 /** The sentence as analysed: lower case, no emphasis, inline code dropped except a test command ("testcmd"). */
 function normalize(sentence: string): string {
   return sentence
-    .replace(/`([^`\n]*)`/g, (_, code: string) => (TEST_COMMAND.test(code.trim().toLowerCase()) ? " testcmd " : " "))
+    .replace(/`([^`\n]*)`/g, (_, code: string) => (isTestCommand(code) ? " testcmd " : " "))
     .toLowerCase()
+    .replace(BARE_TEST_COMMAND, "testcmd")
     .replace(/[*_]/g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -69,6 +80,8 @@ function claimIn(text: string): Omit<Claim, "text"> | undefined {
     const subject = wholeSuite(text.slice(0, m.index));
     if (subject) return scope(subject.all, subject.count);
   }
+  const command = COMMAND_PASSES.exec(text);
+  if (command && wholeSuite(text.slice(0, command.index))) return {};
   if (ALL_N_PASS.test(text)) return {};
   const passed = N_PASSED.exec(text);
   if (passed && wholeSuite(text.slice(0, passed.index))) return scope(false, Number(passed[1]));
