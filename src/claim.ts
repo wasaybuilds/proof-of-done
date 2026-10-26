@@ -1,12 +1,15 @@
-// Sentences that state the tests pass: "All tests pass.", "All 28 tests are passing", "The test suite is green",
-// "42 tests passed", "12 passed, 0 failed".
-const PASS = [
-  /\ball (?:the )?(?:\d+ )?(?:of the )?(?:[\w-]+ )?tests? (?:are |now |still )*(?:pass(?:es|ed|ing)?|green|succeed(?:s|ed)?)\b/,
-  /\ball \d+ (?:are |now )*pass(?:ed|ing)?\b/,
-  /\b(?:test suite|tests|test run|suite) (?:is |are |now |all |still )*(?:pass(?:es|ed|ing)?|green)\b/,
-  /\b\d+(?: ?\/ ?\d+)? (?:[\w-]+ )?tests? (?:are |all )*pass(?:ed|ing)?\b/,
-  /\b\d+ passed\b/,
-];
+import type { Claim } from "./types.js";
+
+// "<subject> pass": "tests pass", "tests are passing", "test suite passes", "tests are green".
+const SUBJECT_VERB = /\b(test suite|test run|tests)( (are|is|now|all|still))* (pass(es|ed|ing)?|green|succeed(s|ed)?)\b/g;
+// Claims without that subject: "all 28 pass", "12 passed".
+const ALL_N_PASS = /\ball \d+ (are |now )*pass(ed|ing)?\b/;
+const N_PASSED = /\b(\d+) passed\b/;
+
+// Words that can stand before the subject and keep it the whole suite: "all of the 28 tests", "the full test suite".
+const WHOLE_SUITE_MODIFIERS = new Set(["all", "of", "the", "full", "whole", "entire"]);
+// Words that can end the previous clause right before the subject: "fixed it and the tests pass".
+const CONNECTORS = new Set(["and", "so", "now", "then", "that", "also", "yes", "done", "great"]);
 
 // Anything that makes a sentence something other than a plain statement that the tests pass now:
 // negations, failures, conditions, plans and hopes, partial claims.
@@ -16,6 +19,24 @@ const NOT_A_CLAIM =
 // "0 failed", "no failures": a failure word that reports zero failures.
 const ZERO_FAILURES = /\b(0|no|zero) (failed|failures?|failing|errors?)\b|\bwithout (any )?(failures?|errors?)\b/g;
 
+/**
+ * Is the subject ending at `end` the whole suite? "All 28 tests", "the tests", "tests" are; "the discount tests",
+ * "its tests", "the new tests" are only some of them, which can pass while other tests fail.
+ * Returns the claimed count ("28 tests"), or null when the subject is scoped.
+ */
+function wholeSuite(before: string): { all: boolean; count?: number } | null {
+  const words = before.trim().split(" ").filter(Boolean);
+  let all = false;
+  let count: number | undefined;
+  for (let w = words.pop(); w !== undefined; w = words.pop()) {
+    const n = /^(\d+)(\/\d+)?$/.exec(w);
+    if (n) count = Number(n[1]);
+    else if (WHOLE_SUITE_MODIFIERS.has(w)) all ||= w === "all";
+    else return CONNECTORS.has(w) || /[^\w']$/.test(w) ? { all, ...(count !== undefined && { count }) } : null;
+  }
+  return { all, ...(count !== undefined && { count }) };
+}
+
 /** Code, quotes and pasted output aren't the agent's own statement. */
 function prose(message: string): string {
   return message
@@ -24,19 +45,35 @@ function prose(message: string): string {
     .replace(/^\s*>.*$/gm, "");
 }
 
+/** The claim a sentence makes about the whole test suite, if any. */
+function claimIn(text: string): Omit<Claim, "text"> | undefined {
+  const zeroFailures = ZERO_FAILURES.test(text);
+  ZERO_FAILURES.lastIndex = 0;
+  if (NOT_A_CLAIM.test(text.replace(ZERO_FAILURES, ""))) return undefined;
+  // Saying "0 failed" or "all" claims there are no failures; a bare count ("40 tests passed") only claims that many pass.
+  const scope = (all: boolean, count: number | undefined) => (all || zeroFailures || count === undefined ? {} : { passing: count });
+
+  for (const m of text.matchAll(SUBJECT_VERB)) {
+    const subject = wholeSuite(text.slice(0, m.index));
+    if (subject) return scope(subject.all, subject.count);
+  }
+  if (ALL_N_PASS.test(text)) return {};
+  const passed = N_PASSED.exec(text);
+  if (passed && wholeSuite(text.slice(0, passed.index))) return scope(false, Number(passed[1]));
+  return undefined;
+}
+
 /**
- * The sentence in which the agent states that the tests pass, or undefined if it doesn't.
+ * The agent's claim that the whole test suite passes, or undefined if it doesn't make one.
  * Deliberately conservative: a missed claim costs one unchecked stop, a wrong one would block an honest agent.
  */
-export function findPassClaim(message: string | undefined): string | undefined {
+export function findPassClaim(message: string | undefined): Claim | undefined {
   if (!message) return undefined;
   for (const raw of prose(message).split(/(?<=[.!?])\s+|\n+/)) {
     const sentence = raw.replace(/^[\s*_#>-]*(\d+\.\s+)?/, "").replace(/[\s*_]+$/, "");
     if (!sentence || sentence.endsWith("?")) continue;
-    const text = sentence.toLowerCase().replace(/[*_]/g, "").replace(/\s+/g, " ");
-    if (!PASS.some((p) => p.test(text))) continue;
-    if (NOT_A_CLAIM.test(text.replace(ZERO_FAILURES, ""))) continue;
-    return sentence.length > 120 ? `${sentence.slice(0, 117)}...` : sentence;
+    const found = claimIn(sentence.toLowerCase().replace(/[*_]/g, "").replace(/\s+/g, " "));
+    if (found) return { text: sentence.length > 120 ? `${sentence.slice(0, 117)}...` : sentence, ...found };
   }
   return undefined;
 }
