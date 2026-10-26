@@ -14,6 +14,10 @@ describe("findPassClaim", () => {
     ["The tests pass, so this is ready to merge.", { text: "The tests pass, so this is ready to merge." }],
     ["Fixed it and the tests pass.", { text: "Fixed it and the tests pass." }],
     ["Done, the test suite passes.", { text: "Done, the test suite passes." }],
+    // seen in a live Claude Code run (Sonnet, 2026-10-26)
+    ["I fixed the bug, and all 3 tests in `npm test` now pass.", { text: "I fixed the bug, and all 3 tests in `npm test` now pass." }],
+    ["All tests in the suite pass.", { text: "All tests in the suite pass." }],
+    ["All 12 tests in `python -m pytest -q` passed.", { text: "All 12 tests in `python -m pytest -q` passed." }],
     // a bare count claims only that many pass
     ["✅ 42 tests passed", { text: "✅ 42 tests passed", passing: 42 }],
     ["40 passed.", { text: "40 passed.", passing: 40 }],
@@ -45,6 +49,8 @@ describe("findPassClaim", () => {
     "These tests are green.",
     "All 3 discount tests pass.",
     "All unit tests pass.",
+    "All tests in `src/cart.test.ts` pass.",
+    "All 3 tests in discount.test.ts pass.",
   ])("not a claim about the whole suite: %j", (message) => {
     expect(findPassClaim(message)).toBeUndefined();
   });

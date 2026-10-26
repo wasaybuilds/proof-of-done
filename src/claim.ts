@@ -1,7 +1,12 @@
 import type { Claim } from "./types.js";
 
-// "<subject> pass": "tests pass", "tests are passing", "test suite passes", "tests are green".
-const SUBJECT_VERB = /\b(test suite|test run|tests)( (are|is|now|all|still))* (pass(es|ed|ing)?|green|succeed(s|ed)?)\b/g;
+// The project's test command, e.g. in "all 3 tests in `npm test` pass".
+const TEST_COMMAND =
+  /^((npx|pnpm|yarn|bun|uv run|poetry run|python3? -m) |npm (run )?)?(test|tests|pytest|vitest|jest|mocha|go test|cargo test|mvn test|gradle test|dotnet test|rspec|phpunit)\b/;
+// "<subject> pass": "tests pass", "tests are passing", "test suite passes", "tests are green", and the same with
+// the whole suite as the place: "tests in testcmd pass" (a quoted test command), "tests in the suite pass".
+const SUBJECT_VERB =
+  /\b(test suite|test run|tests)( (in|from|across) (the )?(testcmd|suite|test suite|project|repo|codebase))?( (are|is|now|all|still))* (pass(es|ed|ing)?|green|succeed(s|ed)?)\b/g;
 // Claims without that subject: "all 28 pass", "12 passed".
 const ALL_N_PASS = /\ball \d+ (are |now )*pass(ed|ing)?\b/;
 const N_PASSED = /\b(\d+) passed\b/;
@@ -37,12 +42,19 @@ function wholeSuite(before: string): { all: boolean; count?: number } | null {
   return { all, ...(count !== undefined && { count }) };
 }
 
-/** Code, quotes and pasted output aren't the agent's own statement. */
+/** Code blocks, quotes and pasted output aren't the agent's own statement. */
 function prose(message: string): string {
-  return message
-    .replace(/```[\s\S]*?(```|$)/g, "\n")
-    .replace(/`[^`\n]*`/g, " ")
-    .replace(/^\s*>.*$/gm, "");
+  return message.replace(/```[\s\S]*?(```|$)/g, "\n").replace(/^\s*>.*$/gm, "");
+}
+
+/** The sentence as analysed: lower case, no emphasis, inline code dropped except a test command ("testcmd"). */
+function normalize(sentence: string): string {
+  return sentence
+    .replace(/`([^`\n]*)`/g, (_, code: string) => (TEST_COMMAND.test(code.trim().toLowerCase()) ? " testcmd " : " "))
+    .toLowerCase()
+    .replace(/[*_]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** The claim a sentence makes about the whole test suite, if any. */
@@ -72,7 +84,7 @@ export function findPassClaim(message: string | undefined): Claim | undefined {
   for (const raw of prose(message).split(/(?<=[.!?])\s+|\n+/)) {
     const sentence = raw.replace(/^[\s*_#>-]*(\d+\.\s+)?/, "").replace(/[\s*_]+$/, "");
     if (!sentence || sentence.endsWith("?")) continue;
-    const found = claimIn(sentence.toLowerCase().replace(/[*_]/g, "").replace(/\s+/g, " "));
+    const found = claimIn(normalize(sentence));
     if (found) return { text: sentence.length > 120 ? `${sentence.slice(0, 117)}...` : sentence, ...found };
   }
   return undefined;
