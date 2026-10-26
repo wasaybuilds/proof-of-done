@@ -77,7 +77,6 @@ export function installClaudeCode(repo: string, pkgRoot: string, opts: { scope?:
   }
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify({ ...settings, hooks }, null, 2) + "\n");
-  ensureGitignored(repo);
   return { settings: file, launcher, scope };
 }
 
@@ -98,13 +97,4 @@ export function uninstallClaudeCode(repo: string): string[] {
     changed.push(launcher);
   }
   return changed;
-}
-
-/** Session state lives in .proof-of-done/ and must never be committed. */
-function ensureGitignored(repo: string): void {
-  const file = join(repo, ".gitignore");
-  const current = existsSync(file) ? readFileSync(file, "utf8") : "";
-  if (/^\/?\.proof-of-done\/?\s*$/m.test(current)) return;
-  const sep = current && !current.endsWith("\n") ? "\n" : "";
-  writeFileSync(file, `${current}${sep}.proof-of-done/\n`);
 }

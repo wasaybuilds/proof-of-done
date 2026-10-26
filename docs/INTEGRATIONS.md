@@ -12,11 +12,11 @@ npx proof-of-done install claude-code      # add the hooks (run inside your repo
 npx proof-of-done uninstall claude-code    # remove them
 ```
 
-`install` writes a small **launcher** to `.claude/hooks/proof-of-done.mjs`, registers it as two command hooks (`node "$CLAUDE_PROJECT_DIR/.claude/hooks/proof-of-done.mjs"`), and adds `.proof-of-done/` to `.gitignore`:
+`install` writes a small **launcher** to `.claude/hooks/proof-of-done.mjs`, and registers it as two command hooks (`node "$CLAUDE_PROJECT_DIR/.claude/hooks/proof-of-done.mjs"`):
 
 | Hook | What it does | Output |
 |---|---|---|
-| `SessionStart` | Records the commit the session started from, in `.proof-of-done/sessions/<session_id>.json`. Resumed sessions keep their original base. | Nothing. SessionStart stdout would be added to Claude's context, so it stays silent: zero tokens. |
+| `SessionStart` | Records the commit the session started from, in `~/.proof-of-done/sessions/` (outside the project, so the agent can't move it; override with `PROOF_OF_DONE_STATE_DIR`). Resumed sessions keep their original base. | Nothing. SessionStart stdout would be added to Claude's context, so it stays silent: zero tokens. |
 | `Stop` | Runs `verify` against the session's base. | On `FAIL`: `{"decision":"block","reason":"Proof of Done: …"}`. Otherwise nothing. |
 
 **Why a launcher.** Proof of Done itself lives in `node_modules`, inside the project, where the agent can edit it: in a live test, an agent patched it to return early and the check silently did nothing. Claude Code treats `.claude/hooks/` as sensitive and won't let the agent edit files there without your permission. So the launcher records a fingerprint (SHA-256 of `dist/` and `package.json`) at install time and refuses to run a package that no longer matches: *"Proof of Done's own files (node_modules/proof-of-done) don't match what was installed (v…), so this session's changes can't be verified."* **After upgrading proof-of-done, run `install claude-code` again** to record the new fingerprint.
@@ -37,7 +37,7 @@ Comparing against the session's starting commit (not `HEAD`) means an agent can'
 Existing settings and other hooks are preserved; running `install` twice doesn't duplicate anything.
 
 **It never works against the user**
-- **Changes you asked for aren't blocked.** The Stop hook reads *your own* messages from the local session transcript (`transcript_path`; tool output and hook feedback are ignored, so the agent can't fake them). If you explicitly asked to delete, remove, drop or skip a test or test file (for example *"remove the percentage feature and delete its test in src/discount.test.ts"*), that change isn't blocked. You see a note instead: *"Proof of Done: allowed 1 test change you asked for: …"*. Negations such as *"don't delete it"* are respected, and only deletions, skips and removed assertions can be approved this way, never vacuous assertions.
+- **Changes you asked for aren't blocked.** The Stop hook reads *your own* messages from the local session transcript (`transcript_path`; tool output and hook feedback are ignored, so the agent can't fake them). If you explicitly asked to delete, remove, drop or skip a test or test file (for example *"remove the percentage feature and delete its test in src/discount.test.ts"*), that change isn't blocked. A message that names test files approves changes in those files only. You see a note instead: *"Proof of Done: allowed 1 test change you asked for: …"*. Negations such as *"don't delete it"* are respected, and only deletions, skips and removed assertions can be approved this way, never vacuous assertions.
 - **Disagreement goes to you, not back to the agent.** Claude is sent back once. If it then tries to finish again **without changing the flagged tests** (it thinks the change is right), Proof of Done stops blocking and asks you to decide: *"Claude was sent back once but didn't change these, so it may have a reason. Please decide: …"*. It keeps blocking only while Claude makes *new* tampering, up to 3 times per session.
 
 This came from a live test: before it, a user asked Claude to remove a feature and its test, the hook blocked twice, and Claude reverted the user's intended change. Now the same request passes with a note.

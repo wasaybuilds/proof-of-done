@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import { classifyPath } from "../changeset/classify.js";
 import { gitChangeSet } from "../changeset/git.js";
 import { verify } from "../engine.js";
@@ -35,8 +37,18 @@ interface SessionState {
 
 export const MAX_BLOCKS_PER_SESSION = 3;
 
+/**
+ * Session state lives outside the project, where the agent can't edit it without the user's permission.
+ * Inside the project, an agent could commit its changes and then move the recorded base to that commit.
+ */
+export const stateDir = (cwd: string): string =>
+  join(
+    process.env.PROOF_OF_DONE_STATE_DIR || join(homedir(), ".proof-of-done", "sessions"),
+    createHash("sha256").update(resolve(cwd)).digest("hex").slice(0, 16),
+  );
+
 const stateFile = (cwd: string, sessionId: string): string =>
-  join(cwd, ".proof-of-done", "sessions", `${sessionId.replace(/[^A-Za-z0-9_-]/g, "_")}.json`);
+  join(stateDir(cwd), `${sessionId.replace(/[^A-Za-z0-9_-]/g, "_")}.json`);
 
 function readState(file: string): SessionState | undefined {
   try {
