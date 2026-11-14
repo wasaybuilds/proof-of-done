@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="5" failures="1" errors="0" time="0.41">
+    <testsuite name="src/discount.test.ts" tests="3" failures="0" errors="0" skipped="0" time="0.01">
+        <testcase classname="src/discount.test.ts" name="applyDiscount &gt; halves the price with HALF" time="0.001"></testcase>
+        <testcase classname="src/discount.test.ts" name="applyDiscount &gt; applies a percentage code" time="0.001"></testcase>
+        <testcase classname="src/discount.test.ts" name="applyDiscount &gt; ignores unknown codes" time="0.001"></testcase>
+    </testsuite>
+    <testsuite name="src/format.test.ts" tests="2" failures="1" errors="0" skipped="0" time="0.01">
+        <testcase classname="src/format.test.ts" name="formatPrice &gt; formats euros" time="0.001"></testcase>
+        <testcase classname="src/format.test.ts" name="formatPrice &gt; formats yen" time="0.002">
+            <failure message="expected '¥1,000.00' to be '¥1,000'" type="AssertionError">AssertionError: expected '¥1,000.00' to be '¥1,000'</failure>
+        </testcase>
+    </testsuite>
+</testsuites>
