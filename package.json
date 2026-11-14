@@ -49,7 +49,7 @@
     "test:package": "npm run build && node scripts/smoke-test.mjs"
   },
   "dependencies": {
-    "commander": "^15.0.0",
+    "commander": "^15.1.0",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
